@@ -114,7 +114,7 @@ export function createFloatingPins(root: ShadowRoot, opts: FloatingPinsOpts): Fl
 
   panel.append(header, list);
 
-  // 최소화 상태 원형 버튼
+  // 최소화 상태 원형 버튼 — 드래그 가능 (버블 탭=확장, 드래그=이동)
   const bubble = doc.createElement('button');
   bubble.type = 'button';
   bubble.className = 'wsm-fp-bubble';
@@ -128,11 +128,14 @@ export function createFloatingPins(root: ShadowRoot, opts: FloatingPinsOpts): Fl
     'background: rgba(249,115,22,1)',
     'color: #fff',
     'font: 700 13px -apple-system, system-ui, sans-serif',
-    'cursor: pointer',
+    'cursor: move',
     'box-shadow: 0 4px 12px rgba(249,115,22,0.4)',
     'display: none',
     'align-items: center',
     'justify-content: center',
+    'touch-action: none',
+    '-webkit-user-select: none',
+    'user-select: none',
   ].join(';');
 
   wrapper.append(panel, bubble);
@@ -324,7 +327,73 @@ export function createFloatingPins(root: ShadowRoot, opts: FloatingPinsOpts): Fl
     minimized = true;
     applyMinimized();
   });
-  bubble.addEventListener('click', () => {
+
+  // Bubble 드래그 / 탭 구분
+  let bubbleDragging = false;
+  let bubbleMoved = false;
+  let bubbleStartX = 0;
+  let bubbleStartY = 0;
+  let bubbleElStartTop = 0;
+  let bubbleElStartLeft = 0;
+  const BUBBLE_DRAG_THRESHOLD = 6;
+
+  function onBubblePointerDown(e: PointerEvent) {
+    bubbleDragging = true;
+    bubbleMoved = false;
+    bubbleStartX = e.clientX;
+    bubbleStartY = e.clientY;
+    const rect = wrapper.getBoundingClientRect();
+    bubbleElStartTop = rect.top;
+    bubbleElStartLeft = rect.left;
+    try {
+      bubble.setPointerCapture(e.pointerId);
+    } catch {
+      // noop
+    }
+  }
+  function onBubblePointerMove(e: PointerEvent) {
+    if (!bubbleDragging) return;
+    const dx = e.clientX - bubbleStartX;
+    const dy = e.clientY - bubbleStartY;
+    if (!bubbleMoved && Math.hypot(dx, dy) > BUBBLE_DRAG_THRESHOLD) {
+      bubbleMoved = true;
+      wrapper.style.setProperty('top', `${bubbleElStartTop}px`);
+      wrapper.style.setProperty('left', `${bubbleElStartLeft}px`);
+      wrapper.style.setProperty('right', 'auto');
+      wrapper.style.setProperty('bottom', 'auto');
+    }
+    if (bubbleMoved) {
+      const c = clampToViewport(bubbleElStartTop + dy, bubbleElStartLeft + dx);
+      wrapper.style.setProperty('top', `${c.top}px`);
+      wrapper.style.setProperty('left', `${c.left}px`);
+      e.preventDefault();
+    }
+  }
+  function onBubblePointerUp() {
+    if (!bubbleDragging) return;
+    bubbleDragging = false;
+    if (bubbleMoved) {
+      const rect = wrapper.getBoundingClientRect();
+      userDraggedPos = { top: rect.top, left: rect.left };
+      try {
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(userDraggedPos));
+      } catch {
+        // noop
+      }
+    }
+  }
+  bubble.addEventListener('pointerdown', onBubblePointerDown);
+  bubble.addEventListener('pointermove', onBubblePointerMove);
+  bubble.addEventListener('pointerup', onBubblePointerUp);
+  bubble.addEventListener('pointercancel', onBubblePointerUp);
+
+  bubble.addEventListener('click', (e) => {
+    // 드래그 후 발생한 click은 무시
+    if (bubbleMoved) {
+      bubbleMoved = false;
+      e.preventDefault();
+      return;
+    }
     minimized = false;
     applyMinimized();
   });
@@ -355,6 +424,10 @@ export function createFloatingPins(root: ShadowRoot, opts: FloatingPinsOpts): Fl
       header.removeEventListener('pointermove', onHeaderPointerMove);
       header.removeEventListener('pointerup', onHeaderPointerUp);
       header.removeEventListener('pointercancel', onHeaderPointerUp);
+      bubble.removeEventListener('pointerdown', onBubblePointerDown);
+      bubble.removeEventListener('pointermove', onBubblePointerMove);
+      bubble.removeEventListener('pointerup', onBubblePointerUp);
+      bubble.removeEventListener('pointercancel', onBubblePointerUp);
       wrapper.remove();
     },
   };

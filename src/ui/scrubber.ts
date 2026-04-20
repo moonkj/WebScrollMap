@@ -73,6 +73,7 @@ export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
     return clientX > w - EDGE_MARGIN;
   }
 
+  // 스크롤 좌표: 0 ~ maxScroll (setScrollY에 직접 사용)
   function mapEventToY(clientY: number): number {
     const h = cachedRect.height || 1;
     const pct = Math.max(0, Math.min(1, (clientY - cachedRect.top) / h));
@@ -80,6 +81,14 @@ export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
     const vpH = api.getViewportHeight();
     const maxScroll = Math.max(0, docH - vpH);
     return pct * maxScroll;
+  }
+
+  // 문서 좌표: 0 ~ docHeight — 핀 마커가 렌더러에서 (y/docH*100%)로 배치되므로
+  // 사용자가 누른 바 위치와 정확히 일치해야 한다.
+  function mapEventToDocY(clientY: number): number {
+    const h = cachedRect.height || 1;
+    const pct = Math.max(0, Math.min(1, (clientY - cachedRect.top) / h));
+    return pct * api.getDocHeight();
   }
 
   function applyScroll() {
@@ -123,12 +132,13 @@ export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
     // 움직이지 않고 타이머 만료 → pin. 움직이면 scrub 전환 + gate 해제.
     if (api.onLongPress) {
       scrollGated = true;
-      const targetY = mapEventToY(e.clientY);
+      // 핀은 문서 좌표 사용 — 렌더러 마커 위치와 정확 일치.
+      const targetDocY = mapEventToDocY(e.clientY);
       longPressTimer = setTimeout(() => {
         longPressTimer = null;
         longPressFired = true;
         api.onHaptic?.('pin');
-        api.onLongPress?.(targetY);
+        api.onLongPress?.(targetDocY);
         scrollGated = true; // pin 발화 후에도 scroll 계속 보류
       }, LONG_PRESS_MS);
     } else {
