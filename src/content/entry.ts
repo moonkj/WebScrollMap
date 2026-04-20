@@ -189,10 +189,12 @@ async function bootstrap(): Promise<void> {
     snapCandidates: () => lastResult.anchors.map((a) => a.y),
     getDocHeight: () => container.getDocHeight(),
     getViewportHeight: () => container.getHeight(),
-    onLongPress: (barY) => {
-      // 핀 = 눌렀던 바의 위치. 누른 자리에 마커가 생김 → 예측 가능 UX.
-      // (현재 뷰를 북마크하려면 바 위 "현재 스크롤 인디케이터" 근처를 누르면 됨)
-      const added = pinStore.add({ y: barY });
+    onLongPress: (_barY) => {
+      // 핀 = "지금 보고 있는 화면"을 북마크. 바 어느 위치를 눌러도 현재 scrollY 저장.
+      // 탭 시 setScrollY(pin.y)로 **정확 복원** (eventual UX: save/restore).
+      // 바 마커는 현재 scrollY / docH 위치에 나타남 → indicator 근처.
+      const currentScroll = container.getScrollY();
+      const added = pinStore.add({ y: currentScroll });
       if (added) {
         renderer.setPins(pinStore.list());
         floatingPins.update(pinStore.list(), container.getDocHeight());

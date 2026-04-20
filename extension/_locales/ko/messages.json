@@ -7,9 +7,9 @@
   "sideRight": { "message": "오른쪽" },
   "margin": { "message": "여백" },
   "pinsLabel": { "message": "핀" },
-  "pinsEmpty": { "message": "아직 핀 없음 — 바를 꾹 누르면 현재 위치가 저장돼요" },
+  "pinsEmpty": { "message": "아직 핀 없음 — 바를 꾹 누르면 현재 화면이 저장돼요" },
   "clearPins": { "message": "핀 비우기" },
   "clearTrail": { "message": "트레일 비우기" },
-  "helpHint": { "message": "바 꾹 누름=현재 위치 저장 · 핀 탭=복귀 · 더블탭=검색" },
+  "helpHint": { "message": "바 꾹 누름=현재 화면 저장 · 핀 탭=정확 복원 · 더블탭=검색" },
   "permissionReason": { "message": "페이지 구조를 읽어 미니맵을 그리기 위해 접근이 필요합니다." }
 }
