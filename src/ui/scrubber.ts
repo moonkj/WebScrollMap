@@ -38,13 +38,13 @@ function isTrackEvent(e: Event): boolean {
 }
 
 // iOS 터치 좌표는 ±1~2px jitter가 있음. 긴 페이지(docH 20,000+)에서 이 노이즈가
-// 20배 증폭돼 "따닥따닥" 현상 발생. 아래 임계로 흡수.
-const JITTER_PX = 3;
+// 20배 증폭돼 "따닥따닥" 현상 발생. EMA 저역필터로 평활화 (threshold 대신).
+const EMA_ALPHA = 0.35; // 높을수록 반응 빠르고 노이즈 증가. 0.3~0.4 권장.
 
 export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
   let ticking = false;
   let pendingY: number | null = null;
-  let lastAppliedClientY = Number.NEGATIVE_INFINITY;
+  let smoothedClientY = 0; // EMA state
   let lastAppliedScrollY = Number.NEGATIVE_INFINITY;
   let active = false;
   // Sev2 fix: layout thrash 방지. rect는 pointerdown 및 resize에서만 갱신.
@@ -138,7 +138,7 @@ export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
     longPressFired = false;
     longPressDownX = e.clientX;
     longPressDownY = e.clientY;
-    lastAppliedClientY = Number.NEGATIVE_INFINITY; // 새 제스처는 jitter 필터 리셋
+    smoothedClientY = e.clientY; // EMA 초기값 = 첫 터치 좌표 (warmup 없음)
     lastAppliedScrollY = Number.NEGATIVE_INFINITY;
     refreshRect();
     api.onStateChange?.('scrubbing');
@@ -188,10 +188,9 @@ export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
     if (Math.hypot(mdx, mdy) > DOUBLE_TAP_MOVE_TOLERANCE_PX) moved = true;
     if (longPressFired) return; // pin fired; don't also scrub
     if (scrollGated) return;
-    // iOS 터치 jitter 흡수: 이전 적용 clientY에서 JITTER_PX 미만이면 무시
-    if (Math.abs(e.clientY - lastAppliedClientY) < JITTER_PX) return;
-    lastAppliedClientY = e.clientY;
-    pendingY = mapEventToY(e.clientY);
+    // EMA 저역필터 — 1~2px 노이즈 평활화, 큰 이동은 그대로 반응
+    smoothedClientY = smoothedClientY * (1 - EMA_ALPHA) + e.clientY * EMA_ALPHA;
+    pendingY = mapEventToY(smoothedClientY);
     api.onMagnify?.(e.clientY, pendingY);
     if (!ticking) {
       ticking = true;
