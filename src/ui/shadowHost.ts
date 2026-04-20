@@ -66,12 +66,13 @@ export function mountShadowHost(
       -webkit-tap-highlight-color: transparent;
       opacity: 0.55;
       transition: opacity 140ms ease-out, clip-path 140ms ease-out, -webkit-clip-path 140ms ease-out;
-      -webkit-clip-path: inset(0 0 0 38px);
-      clip-path: inset(0 0 0 38px);
+      /* host에 --wsm-visible 변수로 동적 제어. 기본 6px 노출, 44px 히트영역 중 외곽만 */
+      -webkit-clip-path: inset(0 0 0 calc(100% - var(--wsm-visible, 6px)));
+      clip-path: inset(0 0 0 calc(100% - var(--wsm-visible, 6px)));
     }
     :host(.wsm-side-left) .wsm-track {
-      -webkit-clip-path: inset(0 38px 0 0);
-      clip-path: inset(0 38px 0 0);
+      -webkit-clip-path: inset(0 calc(100% - var(--wsm-visible, 6px)) 0 0);
+      clip-path: inset(0 calc(100% - var(--wsm-visible, 6px)) 0 0);
     }
     :host(:hover) .wsm-track,
     :host(.wsm-expanded) .wsm-track {

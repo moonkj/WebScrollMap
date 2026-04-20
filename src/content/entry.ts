@@ -118,6 +118,8 @@ async function bootstrap(): Promise<void> {
     const visible = settings.enabled && isActivatable;
     s.setProperty('display', visible ? 'block' : 'none', 'important');
     s.setProperty('width', `${SLIM_WIDTH_PX}px`, 'important');
+    // 바 두께 CSS 변수 — Shadow 내부 .wsm-track의 clip-path가 이걸로 시각 두께 결정
+    s.setProperty('--wsm-visible', `${settings.barWidthPx}px`);
     if (settings.side === 'right') {
       s.setProperty('right', `${settings.marginPx}px`, 'important');
       s.setProperty('left', 'auto', 'important');
