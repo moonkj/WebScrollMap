@@ -1,6 +1,7 @@
 // DOM 모드: 앵커 <600. CSS transform 기반. 접근성(role=scrollbar) 네이티브 이점.
 
 import { AnchorKind, type MinimapRenderer, type MinimapState, type Pin, type RendererOptions, type ScannerResult, type SearchHitMark, type TrailSegment, type ViewportRect } from '@core/types';
+import { computeIndicatorStyle } from '@core/indicator';
 import { paletteFor, type Palette } from './palette';
 
 export function createDomRenderer(root: ShadowRoot, opts: RendererOptions): MinimapRenderer {
@@ -76,11 +77,10 @@ export function createDomRenderer(root: ShadowRoot, opts: RendererOptions): Mini
       renderAnchors(result);
     },
     highlight(_state: MinimapState, viewport: ViewportRect) {
+      const style = computeIndicatorStyle(viewport);
+      indicator.style.top = `${style.topPct.toFixed(3)}%`;
+      indicator.style.height = `${style.heightPct.toFixed(3)}%`;
       const docH = viewport.docHeight || docHeight || 1;
-      const topPct = (viewport.scrollY / docH) * 100;
-      const hPct = (viewport.height / docH) * 100;
-      indicator.style.top = `${topPct.toFixed(3)}%`;
-      indicator.style.height = `${Math.max(1, hPct).toFixed(3)}%`;
       const pct = docH > 0 ? viewport.scrollY / (docH - viewport.height || 1) : 0;
       container.setAttribute('aria-valuenow', String(Math.round(pct * 100)));
       container.setAttribute('aria-valuemin', '0');

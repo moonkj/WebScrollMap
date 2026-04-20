@@ -1,6 +1,7 @@
 // Canvas 모드: 앵커 >=600 일 때. GPU 합성 + dirty region.
 
 import { AnchorKind, type MinimapRenderer, type MinimapState, type Pin, type RendererOptions, type ScannerResult, type SearchHitMark, type TrailSegment, type ViewportRect } from '@core/types';
+import { computeIndicatorStyle } from '@core/indicator';
 import { TUNING } from '@config/tuning';
 import { warnSlowFrame } from '@core/assert';
 import { paletteFor, type Palette } from './palette';
@@ -89,9 +90,10 @@ export function createCanvasRenderer(root: ShadowRoot, opts: RendererOptions): M
       ctx.fillRect(x, y, w, h);
     }
 
-    // viewport indicator
-    const vpY = viewport.scrollY * scale;
-    const vpH = Math.max(2, viewport.height * scale);
+    // viewport indicator — min 15% 강제 적용
+    const idStyle = computeIndicatorStyle(viewport);
+    const vpY = (idStyle.topPct / 100) * H;
+    const vpH = Math.max(2, (idStyle.heightPct / 100) * H);
     ctx.fillStyle = palette.indicator;
     ctx.fillRect(0, vpY, W, vpH);
 
