@@ -20,6 +20,7 @@
   "adminFreeCount": { "message": "無料" },
   "adminProCount": { "message": "Pro" },
   "adminReset": { "message": "統計リセット" },
+  "adminLogout": { "message": "ログアウト" },
   "toggle": { "message": "有効" },
   "side": { "message": "位置" },
   "sideLeft": { "message": "左" },

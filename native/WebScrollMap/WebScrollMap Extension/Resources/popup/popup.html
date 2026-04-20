@@ -76,17 +76,6 @@
       </div>
     </section>
 
-    <section class="wsm-row wsm-pro" data-pro="smart-filter">
-      <div class="wsm-label">
-        <span data-i18n="smartFilter">Show</span><span class="wsm-lock" aria-hidden="true">🔒</span>
-      </div>
-      <div class="wsm-seg" role="radiogroup" aria-label="Smart filter">
-        <button type="button" data-filter="all" data-i18n="filterAll">All</button>
-        <button type="button" data-filter="headings" data-i18n="filterHeadings">Headings</button>
-        <button type="button" data-filter="media" data-i18n="filterMedia">Media</button>
-      </div>
-    </section>
-
     <section class="wsm-row wsm-pro" data-pro="theme">
       <div class="wsm-label">
         <span data-i18n="theme">Theme</span><span class="wsm-lock" aria-hidden="true">🔒</span>
@@ -142,7 +131,10 @@
           <div class="wsm-admin-stat-num" id="admin-pro-count">0</div>
         </div>
       </div>
-      <button type="button" class="wsm-admin-reset" id="admin-reset" data-i18n="adminReset">Reset stats</button>
+      <div class="wsm-admin-actions">
+        <button type="button" class="wsm-admin-reset" id="admin-reset" data-i18n="adminReset">Reset stats</button>
+        <button type="button" class="wsm-admin-logout" id="admin-logout" data-i18n="adminLogout">Logout</button>
+      </div>
     </section>
 
     <div class="wsm-version-bar">

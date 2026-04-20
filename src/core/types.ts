@@ -110,5 +110,6 @@ export interface MinimapRenderer {
   setTrail(segs: ReadonlyArray<TrailSegment>): void;
   setSearchHits(hits: ReadonlyArray<SearchHitMark>): void;
   setPalette(palette: Record<string, string>): void;
+  setSide(side: 'left' | 'right'): void;
   destroy(): void;
 }

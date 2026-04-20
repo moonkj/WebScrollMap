@@ -398,14 +398,13 @@ async function bootstrap(): Promise<void> {
         return false;
       }
       case 'settings-changed': {
-        // tier 제약 재적용 — free는 대부분 무시됨
         settings = applyTierConstraints(tier, msg.settings);
         applyPositionStyle();
+        // side 변경 시 renderer edge도 업데이트 (왼/오른쪽 양쪽 바 버그 해소)
+        renderer.setSide(settings.side);
         floatingPins.setSide(settings.side);
         floatingPins.setOpacity(settings.floatingOpacity);
-        // 테마 변경 → 렌더러 palette 갱신
         renderer.setPalette(paletteForTheme(colorScheme, settings.theme));
-        // smart filter 변경 → 재스캔 결과 갱신
         lastResult = scanWithFilter();
         renderer.update(lastResult);
         renderer.highlight('slim', vp());

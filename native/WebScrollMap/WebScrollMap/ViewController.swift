@@ -16,7 +16,8 @@ class ViewController: UIViewController, WKNavigationDelegate, WKScriptMessageHan
         super.viewDidLoad()
 
         self.webView.navigationDelegate = self
-        self.webView.scrollView.isScrollEnabled = false
+        // 설명서/법적정보 콘텐츠가 길어져 스크롤 허용
+        self.webView.scrollView.isScrollEnabled = true
 
         self.webView.configuration.userContentController.add(self, name: "controller")
 

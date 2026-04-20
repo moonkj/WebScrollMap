@@ -79,6 +79,9 @@ export function createRenderer(root: ShadowRoot, opts: RendererOptions): HybridR
     setPalette(p) {
       inner?.setPalette(p);
     },
+    setSide(side) {
+      inner?.setSide(side);
+    },
     destroy() {
       inner?.destroy();
       inner = null;

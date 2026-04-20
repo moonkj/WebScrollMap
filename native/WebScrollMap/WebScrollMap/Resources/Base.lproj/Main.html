@@ -1,15 +1,386 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'">
-
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-
-    <link rel="stylesheet" href="../Style.css">
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <link rel="stylesheet" href="../Style.css">
 </head>
 <body>
-    <img src="../Icon.png" width="128" height="128" alt="WebScrollMap Icon">
-    <p>You can turn on WebScrollMap’s Safari extension in Settings.</p>
+  <div id="main-view" class="onboarding">
+
+    <div class="brand">
+      <img src="../Icon.png" class="app-icon" alt="WebScrollMap">
+      <h1 class="app-name">WebScrollMap</h1>
+      <p class="tagline" data-i18n="tagline"></p>
+    </div>
+
+    <div class="steps">
+      <div class="step-card">
+        <div class="step-badge">1</div>
+        <div class="step-body">
+          <div class="step-title" data-i18n="step1_title"></div>
+          <div class="step-desc" data-i18n="step1_desc"></div>
+        </div>
+      </div>
+      <div class="step-card">
+        <div class="step-badge">2</div>
+        <div class="step-body">
+          <div class="step-title" data-i18n="step2_title"></div>
+          <div class="step-desc" data-i18n="step2_desc"></div>
+        </div>
+      </div>
+      <div class="step-card">
+        <div class="step-badge">3</div>
+        <div class="step-body">
+          <div class="step-title" data-i18n="step3_title"></div>
+          <div class="step-desc" data-i18n="step3_desc"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="features">
+      <div class="features-header">
+        <span class="features-sparkle">✦</span>
+        <span class="features-title" data-i18n="features_title"></span>
+      </div>
+      <div class="feature-list">
+
+        <div class="feature-item">
+          <div class="feature-icon-wrap blue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="3" width="6" height="18" rx="1.5"/>
+              <circle cx="12" cy="12" r="2.2" fill="white" stroke="none"/>
+            </svg>
+          </div>
+          <div class="feature-text">
+            <div class="feature-title" data-i18n="feat_tap_title"></div>
+            <div class="feature-desc" data-i18n="feat_tap_desc"></div>
+          </div>
+        </div>
+
+        <div class="feature-item">
+          <div class="feature-icon-wrap orange">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2L12 13"/>
+              <circle cx="12" cy="16" r="4" fill="white" stroke="none"/>
+            </svg>
+          </div>
+          <div class="feature-text">
+            <div class="feature-title" data-i18n="feat_pin_title"></div>
+            <div class="feature-desc" data-i18n="feat_pin_desc"></div>
+          </div>
+        </div>
+
+        <div class="feature-item">
+          <div class="feature-icon-wrap green">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="6" width="16" height="13" rx="2"/>
+              <line x1="7" y1="10" x2="15" y2="10"/>
+              <line x1="7" y1="13" x2="13" y2="13"/>
+              <line x1="7" y1="16" x2="11" y2="16"/>
+            </svg>
+          </div>
+          <div class="feature-text">
+            <div class="feature-title" data-i18n="feat_panel_title"></div>
+            <div class="feature-desc" data-i18n="feat_panel_desc"></div>
+          </div>
+        </div>
+
+        <div class="feature-item">
+          <div class="feature-icon-wrap purple">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="6"/>
+              <line x1="16" y1="16" x2="21" y2="21"/>
+            </svg>
+          </div>
+          <div class="feature-text">
+            <div class="feature-title" data-i18n="feat_search_title"></div>
+            <div class="feature-desc" data-i18n="feat_search_desc"></div>
+          </div>
+        </div>
+
+        <div class="feature-item">
+          <div class="feature-icon-wrap red">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="7"/>
+              <line x1="8" y1="11" x2="14" y2="11"/>
+              <line x1="11" y1="8" x2="11" y2="14"/>
+            </svg>
+          </div>
+          <div class="feature-text">
+            <div class="feature-title" data-i18n="feat_zoom_title"></div>
+            <div class="feature-desc" data-i18n="feat_zoom_desc"></div>
+          </div>
+        </div>
+
+        <div class="feature-item">
+          <div class="feature-icon-wrap brown">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9"/>
+              <path d="M12 3a9 9 0 1 0 0 18"/>
+            </svg>
+          </div>
+          <div class="feature-text">
+            <div class="feature-title" data-i18n="feat_theme_title"></div>
+            <div class="feature-desc" data-i18n="feat_theme_desc"></div>
+          </div>
+        </div>
+
+        <div class="feature-item">
+          <div class="feature-icon-wrap slate">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 4v16"/>
+              <path d="M8 7v10"/>
+              <path d="M16 7v10"/>
+              <path d="M4 10v4"/>
+              <path d="M20 10v4"/>
+            </svg>
+          </div>
+          <div class="feature-text">
+            <div class="feature-title" data-i18n="feat_haptic_title"></div>
+            <div class="feature-desc" data-i18n="feat_haptic_desc"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="pro-card">
+      <div class="pro-card-header">
+        <span class="pro-badge">PRO</span>
+        <span class="pro-price" data-i18n="pro_price"></span>
+      </div>
+      <div class="pro-card-desc" data-i18n="pro_desc"></div>
+    </div>
+
+    <div class="legal-list-section">
+      <div class="legal-list-header" data-i18n="legal_title"></div>
+      <div class="legal-list">
+        <button class="legal-row" onclick="window.openPage('privacy')">
+          <span data-i18n="privacy"></span>
+          <span class="legal-chevron">&#8250;</span>
+        </button>
+        <button class="legal-row" onclick="window.openPage('terms')">
+          <span data-i18n="terms"></span>
+          <span class="legal-chevron">&#8250;</span>
+        </button>
+        <button class="legal-row" onclick="window.openPage('support')">
+          <span data-i18n="support"></span>
+          <span class="legal-chevron">&#8250;</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="version-footer">
+      <span id="version-label">v0.3.0</span>
+    </div>
+
+  </div>
+
+  <div id="legal-view" class="legal-view hidden">
+    <div class="legal-header">
+      <button class="legal-back-btn" onclick="closePage()">&#8249;</button>
+      <span class="legal-page-title" id="legal-title"></span>
+    </div>
+    <div class="legal-body" id="legal-body"></div>
+  </div>
+
+  <script>
+  (function () {
+    var I18N = {
+      ko: {
+        tagline: '긴 웹페이지를 지도처럼 탐색',
+        step1_title: 'Safari 확장 켜기',
+        step1_desc: '설정 앱 → Safari → 확장 프로그램 → WebScrollMap을 ON',
+        step2_title: '모든 웹사이트 허용',
+        step2_desc: 'WebScrollMap 설정에서 "모든 웹사이트" → "허용" 선택',
+        step3_title: '긴 페이지에서 사용',
+        step3_desc: '긴 블로그·뉴스·문서에서 바가 자동으로 나타납니다',
+        features_title: '주요 기능',
+        feat_tap_title: '탭 · 드래그',
+        feat_tap_desc: '바 탭으로 점프, 드래그로 스크러빙',
+        feat_pin_title: 'Pin Drop',
+        feat_pin_desc: '0.5초 길게 눌러 현재 화면 저장 (최대 5개)',
+        feat_panel_title: '플로팅 메모장',
+        feat_panel_desc: '드래그 이동·투명도 조절·탭 한 번으로 위치 복귀',
+        feat_search_title: '커스텀 검색',
+        feat_search_desc: '바 더블탭 · Cmd+Shift+F · 미니맵에 발광 마커',
+        feat_zoom_title: '매그니파이 프리뷰',
+        feat_zoom_desc: '스크럽 중 현재 위치의 H1/H2 제목 표시',
+        feat_theme_title: '테마 5종',
+        feat_theme_desc: 'Default · Sunset · Ocean · Forest · Mono',
+        feat_haptic_title: '햅틱 (iOS)',
+        feat_haptic_desc: '핀 드롭·앵커 스냅·엣지 양보 시 미세 진동',
+        pro_price: '₩1,400 일시불 · Apple 앱 내 구매',
+        pro_desc: '핀·검색·트레일·테마·매그니파이·햅틱·레이아웃 커스텀 등 모든 Pro 기능을 한 번에 해금.',
+        legal_title: '법적 정보 · 지원',
+        privacy: '개인정보처리방침',
+        terms: '이용약관',
+        support: '지원 · 문의'
+      },
+      en: {
+        tagline: 'Navigate long webpages like a map',
+        step1_title: 'Enable Safari Extension',
+        step1_desc: 'Settings → Safari → Extensions → Turn on WebScrollMap',
+        step2_title: 'Allow All Websites',
+        step2_desc: 'In WebScrollMap settings, choose "All Websites" → "Allow"',
+        step3_title: 'Use on long pages',
+        step3_desc: 'A slim bar appears on long blogs, news, and articles',
+        features_title: 'Features',
+        feat_tap_title: 'Tap · Drag',
+        feat_tap_desc: 'Tap the bar to jump, drag to scrub',
+        feat_pin_title: 'Pin Drop',
+        feat_pin_desc: 'Long-press 0.5s to save current view (up to 5)',
+        feat_panel_title: 'Floating Pin Pad',
+        feat_panel_desc: 'Draggable · opacity adjustable · one tap to return',
+        feat_search_title: 'Custom Search',
+        feat_search_desc: 'Double-tap bar or Cmd+Shift+F · glowing markers',
+        feat_zoom_title: 'Magnifier Preview',
+        feat_zoom_desc: 'Floating H1/H2 heading preview while scrubbing',
+        feat_theme_title: '5 Themes',
+        feat_theme_desc: 'Default · Sunset · Ocean · Forest · Mono',
+        feat_haptic_title: 'Haptics (iOS)',
+        feat_haptic_desc: 'Subtle feedback on pin drop · anchor snap · edge yield',
+        pro_price: '$0.99 one-time · Apple In-App Purchase',
+        pro_desc: 'Unlock all Pro features: pins, search, trail, themes, magnifier, haptics, and custom layout.',
+        legal_title: 'Legal · Support',
+        privacy: 'Privacy Policy',
+        terms: 'Terms of Service',
+        support: 'Support · Contact'
+      },
+      ja: {
+        tagline: '長いウェブページを地図のように探索',
+        step1_title: 'Safari拡張機能を有効化',
+        step1_desc: '設定 → Safari → 拡張機能 → WebScrollMapをON',
+        step2_title: 'すべてのウェブサイトを許可',
+        step2_desc: 'WebScrollMap設定で「すべてのウェブサイト」→「許可」',
+        step3_title: '長いページで使う',
+        step3_desc: '長いブログ・ニュース・記事でバーが自動表示',
+        features_title: '主な機能',
+        feat_tap_title: 'タップ · ドラッグ',
+        feat_tap_desc: 'バータップでジャンプ、ドラッグでスクラブ',
+        feat_pin_title: 'ピン留め',
+        feat_pin_desc: '0.5秒長押しで現在位置を保存 (最大5件)',
+        feat_panel_title: 'フローティング・ピンパッド',
+        feat_panel_desc: 'ドラッグ移動·透明度·ワンタップ復帰',
+        feat_search_title: 'カスタム検索',
+        feat_search_desc: 'ダブルタップ · Cmd+Shift+F · 発光マーカー',
+        feat_zoom_title: '拡大プレビュー',
+        feat_zoom_desc: 'スクラブ中にH1/H2見出しをフロート表示',
+        feat_theme_title: 'テーマ 5種',
+        feat_theme_desc: 'Default · Sunset · Ocean · Forest · Mono',
+        feat_haptic_title: 'ハプティクス (iOS)',
+        feat_haptic_desc: 'ピン留め · スナップ · エッジで微細フィードバック',
+        pro_price: '$0.99 買い切り · Apple App内課金',
+        pro_desc: 'ピン・検索・軌跡・テーマ・拡大・ハプティクス・カスタムレイアウトなど全てのPro機能を解除。',
+        legal_title: '法的情報・サポート',
+        privacy: 'プライバシーポリシー',
+        terms: '利用規約',
+        support: 'サポート · お問い合わせ'
+      }
+    };
+
+    var LEGAL = {
+      ko: {
+        privacy: [
+          ['1. 수집하는 개인정보', 'WebScrollMap은 어떠한 개인정보도 수집하지 않습니다. 이름·이메일·위치·브라우징 이력·연락처 어느 것도 외부로 전송되지 않습니다.'],
+          ['2. 로컬 저장소', '설정(위치·여백·테마), 핀·트레일, 무작위 기기 식별자(UUID)만 기기 내부(browser.storage.local, sessionStorage)에 저장됩니다. 기기를 벗어나지 않습니다.'],
+          ['3. 네트워크 통신', '기본 상태에서 외부 서버와 일절 통신하지 않습니다. 텔레메트리는 기본 OFF이며, 사용자 동의 없이 활성화되지 않습니다.'],
+          ['4. 결제 정보', 'Pro 구매는 Apple App Store(StoreKit 2)를 통해 처리됩니다. 카드 정보·영수증은 Apple만 처리하며 개발자는 접근할 수 없습니다. 저희는 Apple이 반환한 "구매 여부"만 기기에 저장합니다.'],
+          ['5. 제3자 서비스', '광고 네트워크·분석 도구(Google Analytics 등)·소셜 로그인을 일절 사용하지 않습니다.'],
+          ['6. 아동 보호', '만 14세 미만 아동의 개인정보를 의도적으로 수집하지 않습니다.'],
+          ['7. 방침 변경', '변경 시 앱 업데이트 또는 이 화면을 통해 공지합니다.'],
+          ['8. 문의', 'Apple App Store 개발자 연락처를 통해 문의해주세요.']
+        ],
+        terms: [
+          ['1. 라이선스', '개발자는 귀하에게 앱의 비독점적·양도 불가·개인 사용 라이선스를 부여합니다. 앱을 복사·수정·배포·판매·역공학하거나 파생물을 만들어서는 안 됩니다.'],
+          ['2. Pro 구매', 'Pro 기능은 일회성 구매(₩1,400 / $0.99)로 해금됩니다. 구매 및 환불은 Apple App Store 정책을 따릅니다. 환불 후에는 14일 유예 기간 이후 자동으로 Free로 전환됩니다.'],
+          ['3. 사용자 책임', '합법적인 목적으로만 사용하며, 타인의 저작물을 무단 스크래핑하는 목적으로 사용하지 않습니다. 사용 결과에 대한 책임은 귀하에게 있습니다.'],
+          ['4. 지식재산권', '앱 및 관련 콘텐츠(코드·디자인·로고 포함)의 모든 권리는 개발자에게 귀속됩니다. 본 약관은 이를 귀하에게 이전하지 않습니다.'],
+          ['5. 보증 부인', '앱은 "있는 그대로(AS IS)" 제공됩니다. 개발자는 특정 목적 적합성·오류 없는 동작·모든 사이트 호환성을 보증하지 않습니다.'],
+          ['6. 책임 제한', '관련 법령이 허용하는 범위에서, 개발자는 앱 사용으로 인한 간접·우발적·결과적 손해에 대해 책임을 지지 않습니다.'],
+          ['7. Apple과의 관계', '본 약관은 귀하와 개발자 간의 계약입니다. Apple Inc.는 앱 유지·보수 의무가 없으며, 이 약관의 당사자가 아닙니다.'],
+          ['8. 준거법', '본 약관은 대한민국 법률에 따라 해석됩니다.'],
+          ['9. 문의', 'Apple App Store 개발자 연락처를 통해 문의해주세요.']
+        ],
+        support: [
+          ['문의 채널', '버그 리포트·기능 제안·일반 문의는 아래 채널을 이용해주세요.'],
+          ['이메일', 'imurmkj@naver.com'],
+          ['GitHub', 'github.com/moonkj/WebScrollMap'],
+          ['App Store', 'Apple App Store 앱 페이지의 "개발자에게 문의" 링크'],
+          ['Q. 미니맵이 안 보여요', 'A. 짧은 페이지(뷰포트 × 1.5 미만)는 자동 비활성화됩니다. 긴 블로그·위키피디아에서 테스트해보세요. 또한 설정 → Safari → 확장 프로그램 → WebScrollMap 권한이 "모든 웹사이트"인지 확인해주세요.'],
+          ['Q. Gmail/Slack에서 안 먹혀요', 'A. 내부 스크롤 컨테이너 감지가 실패할 수 있습니다. 외장 키보드 Alt+Shift+M으로 수동 선택하거나 일반 긴 페이지에서 테스트해주세요.'],
+          ['Q. 구매 복원', 'A. 확장 popup 하단의 "구매 복원" 링크를 탭하면 Apple ID 연결된 구매가 복원됩니다.'],
+          ['Q. 환불 요청', 'A. App Store "문제 신고" 또는 reportaproblem.apple.com에서 Apple 정책에 따라 처리됩니다.']
+        ]
+      },
+      en: {
+        privacy: [
+          ['1. Information We Collect', 'WebScrollMap collects no personal information — no names, emails, location, browsing history, or contacts leave your device.'],
+          ['2. Local Storage', 'Settings (side/margin/theme), pins/trail, and a random device UUID are stored exclusively on your device (browser.storage.local, sessionStorage). Data never leaves the device.'],
+          ['3. Network Communication', 'By default, no network requests. Telemetry is OFF by default and never activates without explicit user consent.'],
+          ['4. Payment Information', 'Pro purchases are handled by Apple App Store (StoreKit 2). Card details and receipts are processed by Apple only; the developer has no access.'],
+          ['5. Third-Party Services', 'No advertising networks, analytics tools, or social logins.'],
+          ['6. Children Privacy', 'We do not knowingly collect personal information from children under 13.'],
+          ['7. Policy Changes', 'Changes will be announced via app updates or this screen.'],
+          ['8. Contact', 'Please use the developer contact in the Apple App Store.']
+        ],
+        terms: [
+          ['1. License Grant', 'The developer grants a non-exclusive, non-transferable, personal license to use the App.'],
+          ['2. Pro Purchase', 'Pro is unlocked via a one-time purchase ($0.99). Purchases and refunds follow Apple App Store policy. After a refund, the app returns to Free tier after a 14-day grace period.'],
+          ['3. User Responsibilities', 'Use only for lawful purposes.'],
+          ['4. Intellectual Property', 'All rights in the App and its related content belong to the Developer.'],
+          ['5. Disclaimer of Warranties', 'The App is provided "AS IS" with no warranties.'],
+          ['6. Limitation of Liability', 'The Developer is not liable for indirect, incidental, or consequential damages.'],
+          ['7. Relationship with Apple', 'These Terms are solely between you and the Developer.'],
+          ['8. Governing Law', 'These Terms are interpreted under the laws of the Republic of Korea.'],
+          ['9. Contact', 'Please use the developer contact in the Apple App Store.']
+        ],
+        support: [
+          ['Contact', 'For bug reports, feature requests, or general inquiries.'],
+          ['Email', 'imurmkj@naver.com'],
+          ['GitHub', 'github.com/moonkj/WebScrollMap'],
+          ['App Store', 'Use the "Contact Developer" link on the Apple App Store page.'],
+          ['Q. Minimap not appearing', 'A. Short pages are auto-disabled. Also verify Safari extension permission is "All Websites".'],
+          ['Q. Not working on Gmail/Slack', 'A. Internal scroll detection may fail. Use manual picker (Alt+Shift+M) or regular long pages.'],
+          ['Q. Restore Purchase', 'A. Tap "Restore purchases" link at the bottom of the extension popup.'],
+          ['Q. Refund', 'A. Use App Store "Report a Problem" per Apple policy.']
+        ]
+      }
+    };
+    LEGAL.ja = LEGAL.en;
+
+    var l = (navigator.language || 'en').toLowerCase();
+    var lang = l.indexOf('ko') === 0 ? 'ko' : l.indexOf('ja') === 0 ? 'ja' : 'en';
+    var s = I18N[lang];
+
+    document.querySelectorAll('[data-i18n]').forEach(function (el) {
+      el.textContent = s[el.getAttribute('data-i18n')] || '';
+    });
+
+    var mainView = document.getElementById('main-view');
+    var legalView = document.getElementById('legal-view');
+    var legalTitle = document.getElementById('legal-title');
+    var legalBody = document.getElementById('legal-body');
+
+    window.openPage = function (type) {
+      var sections = (LEGAL[lang] || LEGAL.en)[type];
+      legalTitle.textContent = s[type] || type;
+      legalBody.innerHTML = sections.map(function (sec) {
+        return '<div class="legal-section"><h3>' + sec[0] + '</h3><p>' + sec[1] + '</p></div>';
+      }).join('');
+      mainView.classList.add('hidden');
+      legalView.classList.remove('hidden');
+      window.scrollTo(0, 0);
+    };
+
+    window.closePage = function () {
+      legalView.classList.add('hidden');
+      mainView.classList.remove('hidden');
+      window.scrollTo(0, 0);
+    };
+  }());
+  </script>
 </body>
 </html>

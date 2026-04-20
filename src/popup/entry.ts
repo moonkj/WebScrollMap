@@ -413,6 +413,13 @@ async function init() {
     admin = await fetchAdminConfig();
     applyAdminUI(admin);
   });
+
+  // Admin logout — 패널 숨김 (override는 유지, 단순 UI 비공개)
+  document.getElementById('admin-logout')?.addEventListener('click', async () => {
+    await setAdminEnabled(false);
+    admin = await fetchAdminConfig();
+    applyAdminUI(admin);
+  });
 }
 
 void init();

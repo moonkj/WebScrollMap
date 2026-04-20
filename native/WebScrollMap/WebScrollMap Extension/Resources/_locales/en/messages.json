@@ -20,6 +20,7 @@
   "adminFreeCount": { "message": "Free" },
   "adminProCount": { "message": "Pro" },
   "adminReset": { "message": "Reset stats" },
+  "adminLogout": { "message": "Logout" },
   "toggle": { "message": "Enabled" },
   "side": { "message": "Side" },
   "sideLeft": { "message": "Left" },

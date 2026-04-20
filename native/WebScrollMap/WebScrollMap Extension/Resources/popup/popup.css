@@ -56,6 +56,7 @@ body {
   border-top: 1px solid var(--border);
   gap: 6px;
   min-width: 0;
+  flex-wrap: wrap;
 }
 .wsm-row:first-of-type {
   border-top: 0;
@@ -63,7 +64,16 @@ body {
 .wsm-row > .wsm-label {
   flex: 0 0 auto;
   white-space: nowrap;
+  width: 100%;
 }
+/* 세그가 있는 row는 라벨 아래에 전폭으로 */
+.wsm-row > .wsm-seg,
+.wsm-row > .wsm-theme-row {
+  width: 100%;
+  justify-content: flex-start;
+}
+/* 폭이 좁은 wsm-switch, wsm-pins-section 등은 단독 row */
+.wsm-row.wsm-switch-row > * { width: auto; }
 .wsm-label {
   color: var(--muted);
   font-size: 11px;
@@ -116,22 +126,25 @@ body {
   overflow: hidden;
 }
 .wsm-seg {
-  flex: 0 1 auto;
+  display: inline-flex;
+  flex: 1 1 auto;
   min-width: 0;
   max-width: 100%;
   flex-wrap: nowrap;
+  overflow: hidden;
 }
 .wsm-seg button {
   appearance: none;
   background: var(--surface);
   border: 0;
   color: var(--fg);
-  padding: 5px 8px;
+  padding: 6px 4px;
   cursor: pointer;
   font: inherit;
   font-size: 12px;
   border-right: 1px solid var(--border);
-  min-width: 28px;
+  flex: 1 1 0;
+  min-width: 0;
   white-space: nowrap;
 }
 .wsm-seg-narrow button {
@@ -305,16 +318,16 @@ body {
 
 /* Theme cards */
 .wsm-theme-row {
-  display: inline-flex;
-  gap: 4px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  max-width: 180px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  max-width: 100%;
 }
 .wsm-theme-card {
   appearance: none;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   border: 2px solid var(--border);
   background: transparent;
@@ -326,6 +339,8 @@ body {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  flex: 1 1 0;
+  min-width: 0;
 }
 .wsm-theme-card[aria-pressed='true'] {
   border-color: var(--accent);
@@ -372,9 +387,14 @@ body {
   font-variant-numeric: tabular-nums;
   margin-top: 2px;
 }
-.wsm-admin-reset {
+.wsm-admin-actions {
+  display: flex;
+  gap: 6px;
+}
+.wsm-admin-reset,
+.wsm-admin-logout {
   appearance: none;
-  width: 100%;
+  flex: 1 1 0;
   background: transparent;
   border: 1px solid var(--border);
   color: var(--muted);
@@ -386,6 +406,10 @@ body {
 .wsm-admin-reset:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+.wsm-admin-logout:hover {
+  border-color: #ef4444;
+  color: #ef4444;
 }
 
 /* Version bar */

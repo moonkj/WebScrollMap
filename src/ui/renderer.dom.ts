@@ -39,7 +39,7 @@ export function createDomRenderer(root: ShadowRoot, opts: RendererOptions): Mini
   let lastPins: ReadonlyArray<Pin> = [];
   let lastTrail: ReadonlyArray<TrailSegment> = [];
   let lastHits: ReadonlyArray<SearchHitMark> = [];
-  const isRight = opts.side === 'right';
+  let isRight = opts.side === 'right';
 
   function applyPalette() {
     container.style.backgroundColor = palette.track;
@@ -146,6 +146,14 @@ export function createDomRenderer(root: ShadowRoot, opts: RendererOptions): Mini
       (this as unknown as { setPins(x: unknown): void; setTrail(x: unknown): void; setSearchHits(x: unknown): void; }).setPins(ps);
       (this as unknown as { setTrail(x: unknown): void; }).setTrail(ts);
       (this as unknown as { setSearchHits(x: unknown): void; }).setSearchHits(hs);
+    },
+    setSide(side) {
+      isRight = side === 'right';
+      // 모든 레이어 재렌더 (edge 방향 바뀜)
+      if (lastResult) renderAnchors(lastResult);
+      (this as unknown as { setPins(x: unknown): void; setTrail(x: unknown): void; setSearchHits(x: unknown): void; }).setPins(lastPins);
+      (this as unknown as { setTrail(x: unknown): void; }).setTrail(lastTrail);
+      (this as unknown as { setSearchHits(x: unknown): void; }).setSearchHits(lastHits);
     },
     destroy() {
       container.remove();

@@ -20,6 +20,7 @@
   "adminFreeCount": { "message": "무료" },
   "adminProCount": { "message": "유료" },
   "adminReset": { "message": "통계 초기화" },
+  "adminLogout": { "message": "관리자 종료" },
   "toggle": { "message": "켜기" },
   "side": { "message": "위치" },
   "sideLeft": { "message": "왼쪽" },

@@ -28,7 +28,7 @@ export function createCanvasRenderer(root: ShadowRoot, opts: RendererOptions): M
   let lastHits: ReadonlyArray<SearchHitMark> = [];
   let lastState: MinimapState = 'slim';
   let lastViewport: ViewportRect = { scrollY: 0, height: 0, docHeight: 1 };
-  const isRight = opts.side === 'right';
+  let isRight = opts.side === 'right';
 
   const ctx = canvas.getContext('2d');
 
@@ -170,6 +170,10 @@ export function createCanvasRenderer(root: ShadowRoot, opts: RendererOptions): M
     },
     setPalette(p) {
       palette = { ...palette, ...p } as Palette;
+      if (lastResult) drawAll(lastState, lastViewport);
+    },
+    setSide(side) {
+      isRight = side === 'right';
       if (lastResult) drawAll(lastState, lastViewport);
     },
     destroy() {
