@@ -66,14 +66,23 @@
 - [ ] 커스텀 검색 패널 (S7 — Cmd+F 가로채기 금지)
 
 ### 핵심 모듈
-- [ ] Safari Web Extension 스캐폴딩 (macOS+iOS 공용)
-- [ ] `core/scanner.ts` (offsetTop + offsetParent 누적, getBoundingClientRect 금지)
-- [ ] `ui/shadowHost.ts` (closed + all:initial)
-- [ ] `ui/renderer.dom.ts` / `ui/renderer.canvas.ts`
-- [ ] `ui/scrubber.ts` (RAF throttle, passive touch, scrollTo 즉시 모드)
-- [ ] `platform/container.ts` (내부 스크롤 컨테이너 자동 감지 + 수동 피커)
-- [ ] `platform/observerBus.ts` (Mutation 500ms debounce, SPA pushState monkey-patch)
-- [ ] `platform/edgeSwipe.ts` (Pull Handle, margin 16px)
+- [x] Safari Web Extension 스캐폴딩 (manifest v3, Vite, TS strict)
+- [x] `core/scanner.ts` (offsetTop 누적, detached 가드)
+- [x] `core/renderMode.ts` (히스테리시스 600/550, 쿨다운 1s) ✅ R2-2
+- [x] `core/snap.ts` (±12px binary-search)
+- [x] `core/hash.ts` (djb2)
+- [x] `ui/shadowHost.ts` (closed + all:initial, 랜덤 태그명 — S5 방어)
+- [x] `ui/renderer.ts` (하이브리드 파사드, MinimapRenderer 계약) ✅ R2-1 Sev1
+- [x] `ui/renderer.dom.ts` / `ui/renderer.canvas.ts`
+- [x] `ui/scrubber.ts` (RAF throttle, passive touch, scrollTo 즉시, rect 캐시, 엣지존 양보)
+- [x] `platform/observerBus.ts` (Mutation 500ms, SPA patch 체인 안전 복원, visualViewport)
+- [x] `platform/platform.ts` (PlatformCapabilities 단일 관문) ✅ R2-3
+- [x] `config/tuning.ts` (매직넘버 격리) ✅ R2-5
+- [x] `content/entry.ts` + `shouldActivate.ts` (bootstrap + RAF scroll)
+- [x] 단위 테스트 21건 (snap/renderMode/scanner/hash/shouldActivate)
+- [x] Debugger Sev1 3건 + Sev2 3건 수정 완료
+- [ ] `platform/container.ts` (내부 스크롤 컨테이너 자동 감지 + 수동 피커) — 다음 사이클
+- [ ] `platform/edgeSwipe.ts` (Pull Handle 전용) — 다음 사이클 (현재는 scrubber 내부 엣지존)
 
 ## 2. Phase: 차별화 기능
 - [ ] Anchor Snap (±12px)

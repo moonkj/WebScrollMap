@@ -1,0 +1,100 @@
+export const enum AnchorKind {
+  Heading1 = 1,
+  Heading2 = 2,
+  Heading3 = 3,
+  Image = 4,
+  Video = 5,
+  StrongText = 6,
+  LinkCluster = 7,
+}
+
+export interface AnchorPoint {
+  y: number;
+  type: AnchorKind;
+  weight: number;
+  textHash: number;
+}
+
+export interface DensityBlock {
+  yStart: number;
+  yEnd: number;
+  textScore: number;
+  mediaScore: number;
+  linkScore: number;
+}
+
+export interface ScanOptions {
+  maxAnchors: number;
+  timeBudgetMs: number;
+  containerRoot?: Element;
+}
+
+export interface ScannerResult {
+  anchors: ReadonlyArray<AnchorPoint>;
+  blocks: ReadonlyArray<DensityBlock>;
+  docHeight: number;
+  scannedAt: number;
+  elapsedMs: number;
+}
+
+export type RenderMode = 'dom' | 'canvas';
+
+export type MinimapState =
+  | 'slim'
+  | 'expanded'
+  | 'scrubbing'
+  | 'search'
+  | 'inactive'
+  | 'loading'
+  | 'error'
+  | 'dark';
+
+export interface ViewportRect {
+  scrollY: number;
+  height: number;
+  docHeight: number;
+}
+
+export interface Pin {
+  id: string;
+  y: number;
+  color?: string;
+  label?: string;
+}
+
+export interface TrailSegment {
+  yStart: number;
+  yEnd: number;
+  visitedAt: number;
+}
+
+export interface ContainerTarget {
+  kind: 'window' | 'element';
+  el: HTMLElement | null;
+  getScrollY(): number;
+  setScrollY(y: number): void;
+  getHeight(): number;
+  getDocHeight(): number;
+}
+
+export interface Disposable {
+  dispose(): void;
+}
+
+export interface RendererOptions {
+  width: number;
+  height: number;
+  dpr: number;
+  colorScheme: 'light' | 'dark';
+  onSlowFrame?(ms: number): void;
+}
+
+// Sev1 계약: Canvas/DOM 구현체가 반드시 준수. 드리프트 방지.
+export interface MinimapRenderer {
+  mount(): void;
+  update(result: ScannerResult): void;
+  highlight(state: MinimapState, viewport: ViewportRect): void;
+  setPins(pins: ReadonlyArray<Pin>): void;
+  setTrail(segs: ReadonlyArray<TrailSegment>): void;
+  destroy(): void;
+}

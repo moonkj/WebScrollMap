@@ -54,6 +54,26 @@
 - 과학적 토론 9건 추가 (D7~D15)
 - 설계 v3 확정 (design.md §12~14)
 
-### 다음 단계
-- design v3 커밋 + GitHub push
-- MVP 구현 사이클 진입 — 블로커 11건 (🚨 Sev1 6건 + R2 5건) 우선 해소
+### [08] MVP Phase 1 구현 착수
+- Safari Web Extension 스캐폴딩: `manifest.json` v3, Vite + TS strict, Vitest, happy-dom
+- `package.json` 의존성 설치, `tsconfig.json` 경로 alias (`@core/`, `@ui/`, `@platform/`, `@config/`, `@test/`)
+- Vite 빌드: 단일 IIFE `extension/dist/content.js` (14.19KB, gzip 5.17KB)
+
+### [09] 핵심 모듈 구현 (Sev1 블로커 해소)
+- `MinimapRenderer` 인터페이스 계약 확립 (R2-1 Sev1 ✅)
+- `pickRenderMode` 히스테리시스 600/550 + 1s 쿨다운 (R2-2 ✅)
+- `PlatformCapabilities` 어댑터 (R2-3 ✅)
+- `config/tuning.ts` 매직넘버 격리 (R2-5 ✅)
+- `shadowHost.ts` 랜덤 태그명으로 S5 변조 방지
+
+### [10] 테스트 + Debugger 패스
+- Vitest 21/21 통과 (snap, renderMode, scanner, hash, shouldActivate)
+- Debugger가 Sev1 3건(pointer-events 이중설정, pushState 체인 복원, offsetParent detached) + Sev2 3건(rect 캐시, sentinel 혼동, canvas clip) 식별
+- 전부 즉시 수정, 재테스트 21/21 통과, 빌드 통과
+
+### 다음 단계 (Phase 2)
+- iOS 엣지 스와이프 실기기 검증 (Pull Handle)
+- `container.ts` 내부 스크롤 컨테이너 자동 감지 (H5)
+- Pin Drop + Progress Trail 저장/HMAC (S6)
+- Privacy Manifest 작성 (S3/S9)
+- Xcode Safari App Extension 래퍼 구성

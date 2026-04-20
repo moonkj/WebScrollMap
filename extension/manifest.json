@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "WebScrollMap",
+  "version": "0.1.0",
+  "description": "긴 웹페이지를 지도처럼 탐색하는 미니맵",
+  "default_locale": "ko",
+  "host_permissions": ["<all_urls>"],
+  "optional_host_permissions": ["*://*/*"],
+  "permissions": ["storage"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["dist/content.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "web_accessible_resources": []
+}
