@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=320" />
+    <title>WebScrollMap</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="wsm-head">
+      <h1 class="wsm-title" data-i18n="appName">WebScrollMap</h1>
+      <div class="wsm-status" id="status" aria-live="polite"></div>
+    </header>
+
+    <section class="wsm-row">
+      <label class="wsm-switch">
+        <span data-i18n="toggle">On</span>
+        <input type="checkbox" id="enabled" />
+        <span class="wsm-switch-slider" aria-hidden="true"></span>
+      </label>
+    </section>
+
+    <section class="wsm-row">
+      <div class="wsm-label" data-i18n="side">Side</div>
+      <div class="wsm-seg" role="radiogroup" aria-labelledby="side">
+        <button type="button" data-side="left" data-i18n="sideLeft">Left</button>
+        <button type="button" data-side="right" data-i18n="sideRight">Right</button>
+      </div>
+    </section>
+
+    <section class="wsm-row">
+      <div class="wsm-label" data-i18n="margin">Margin</div>
+      <div class="wsm-seg" role="radiogroup" aria-labelledby="margin">
+        <button type="button" data-margin="0">0</button>
+        <button type="button" data-margin="16">16</button>
+        <button type="button" data-margin="24">24</button>
+      </div>
+    </section>
+
+    <section class="wsm-row wsm-actions">
+      <button type="button" id="clear-pins" data-i18n="clearPins">Clear Pins</button>
+      <button type="button" id="clear-trail" data-i18n="clearTrail">Clear Trail</button>
+    </section>
+
+    <footer class="wsm-foot">
+      <span class="wsm-hint" data-i18n="helpHint">Long-press on the minimap to drop a pin</span>
+    </footer>
+
+    <script src="/dist/popup.js"></script>
+  </body>
+</html>

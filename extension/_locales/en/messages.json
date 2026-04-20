@@ -1,0 +1,13 @@
+{
+  "appName": { "message": "WebScrollMap" },
+  "appDescription": { "message": "Explore long web pages as a minimap on the right" },
+  "toggle": { "message": "Enabled" },
+  "side": { "message": "Side" },
+  "sideLeft": { "message": "Left" },
+  "sideRight": { "message": "Right" },
+  "margin": { "message": "Margin" },
+  "clearPins": { "message": "Clear Pins" },
+  "clearTrail": { "message": "Clear Trail" },
+  "helpHint": { "message": "Long-press on the minimap to drop a pin" },
+  "permissionReason": { "message": "Access is required to read the page structure and draw the minimap." }
+}

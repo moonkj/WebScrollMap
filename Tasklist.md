@@ -87,11 +87,19 @@
 - [x] `ui/scrubber.ts` 롱프레스 Pin Drop + 탭 점프 + x/y 합성 거리 취소
 - [x] Sev1 1건 (scroll gate) + Sev2 3건 (now() 중복, merge 체이닝, hypot) 수정
 - [x] 단위 테스트 9 파일 44건 통과 (신규: storage/pins/trail/container 23건)
-- [ ] `platform/edgeSwipe.ts` (Pull Handle 전용 모듈화) — 다음 사이클 (현재는 scrubber 내장)
-- [ ] 수동 피커 UI (H5 감지 실패 시) — 다음 사이클
-- [ ] Privacy Manifest `PrivacyInfo.xcprivacy` — 다음 사이클
-- [ ] Popup UI + i18n `_locales/` — 다음 사이클
-- [ ] Xcode Safari App Extension 래퍼 — 다음 사이클 (실기기)
+- [x] `platform/manualPicker.ts` — Alt+클릭 수동 피커 (10s 자동 취소, blur 취소)
+- [x] `core/messages.ts` — content/popup/background 메시지 프로토콜
+- [x] `core/settings.ts` — `browser.storage.local` 로드/저장 + sanitize
+- [x] `background/entry.ts` — service_worker 기반 상태 관리 + broadcast
+- [x] `popup/` — HTML/CSS/JS (320px, prefers-color-scheme 대응)
+- [x] `_locales/ko,en,ja` — i18n `__MSG_*__` 메시지
+- [x] `PrivacyInfo.xcprivacy` — 심사 대비 선언
+- [x] `manifest.json` MV3 `service_worker` + `action` + `default_locale`
+- [x] 다중 엔트리 Vite 빌드 (content/background/popup 3회)
+- [x] Phase 3 Debugger: Sev1 2건 + Sev2 3건 수정
+- [ ] Xcode Safari App Extension 래퍼 (실기기) — 다음 사이클
+- [ ] 커스텀 검색 패널 (S7) — 다음 사이클
+- [ ] 텔레메트리 링 버퍼 (opt-in) — 다음 사이클
 
 ## 2. Phase: 차별화 기능
 - [ ] Anchor Snap (±12px)

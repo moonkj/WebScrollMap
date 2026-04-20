@@ -6,8 +6,8 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "build": "vite build",
-    "dev": "vite build --watch --mode development",
+    "build": "ENTRY=content vite build && ENTRY=background vite build && ENTRY=popup vite build",
+    "dev": "ENTRY=content vite build --watch --mode development",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
