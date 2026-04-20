@@ -67,16 +67,14 @@ function render(settings: Settings, status: PageStatus | null) {
   const el = document.getElementById('status');
   if (el) {
     if (!status) {
-      el.textContent = '';
+      el.textContent = 'content script 미주입 (페이지 새로고침 필요)';
     } else if (!status.activatable) {
-      el.textContent = '—';
+      el.textContent = '이 페이지는 너무 짧아 비활성 (지도화할 구조 없음)';
     } else {
       const kind =
         status.containerKind === 'element'
-          ? ' (internal scroll)'
-          : status.containerKind === 'window'
-            ? ''
-            : '';
+          ? ' · 내부 스크롤'
+          : '';
       el.textContent = `${status.anchorCount} anchors · ${status.pinCount} pins${kind}`;
     }
   }

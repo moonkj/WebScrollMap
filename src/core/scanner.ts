@@ -115,12 +115,20 @@ export function createScanner(deps: ScannerDeps): Scanner {
         if (kind === null) continue;
         const y = cumulativeOffsetTop(el);
         if (y < 0) continue;
-        const text = (el.textContent ?? '').slice(0, 40);
+        const rawText = (el.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 40);
+        // 프라이버시: snippet은 heading/strong 계열에만 저장 (제목 맥락).
+        // 이미지/링크 클러스터는 snippet 비움 (사용자 입력 유출 방지).
+        const keepSnippet =
+          kind === AnchorKind.Heading1 ||
+          kind === AnchorKind.Heading2 ||
+          kind === AnchorKind.Heading3 ||
+          kind === AnchorKind.StrongText;
         anchors.push({
           y,
           type: kind,
           weight: weightFor(kind),
-          textHash: djb2(text),
+          textHash: djb2(rawText),
+          snippet: keepSnippet ? rawText : '',
         });
       }
 

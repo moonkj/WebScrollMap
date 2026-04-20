@@ -13,6 +13,8 @@ export interface AnchorPoint {
   type: AnchorKind;
   weight: number;
   textHash: number;
+  /** 최대 40자 — 매그니파이/섹션 배지 표시용. heading 계열만 채워짐, 그 외 empty */
+  snippet: string;
 }
 
 export interface DensityBlock {
@@ -86,6 +88,7 @@ export interface RendererOptions {
   height: number;
   dpr: number;
   colorScheme: 'light' | 'dark';
+  side: 'left' | 'right';
   onSlowFrame?(ms: number): void;
 }
 

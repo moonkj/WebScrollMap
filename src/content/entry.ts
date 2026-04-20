@@ -4,6 +4,7 @@ import { createRenderer } from '@ui/renderer';
 import { createScrubber } from '@ui/scrubber';
 import { createMagnifier } from '@ui/magnifier';
 import { createSearchPanel } from '@ui/searchPanel';
+import { createSectionBadge } from '@ui/sectionBadge';
 import { buildSearchIndex, searchIndex, type SearchIndexEntry } from '@core/searchIndex';
 import { createObserverBus } from '@platform/observerBus';
 import { detectScrollContainer, elementTarget } from '@platform/container';
@@ -21,6 +22,7 @@ import type { ContainerTarget, Disposable, ViewportRect } from '@core/types';
 
 const WSM_Z_INDEX = 2_147_483_000;
 const TRAIL_SAMPLE_MS = 250;
+const SLIM_WIDTH_PX = 44;
 
 function domReady(): Promise<void> {
   if (document.readyState !== 'loading') return Promise.resolve();
@@ -29,11 +31,9 @@ function domReady(): Promise<void> {
 
 async function bootstrap(): Promise<void> {
   await domReady();
-  if (!shouldActivate(document, window)) return;
 
   const browserApi = getBrowserApi();
   let settings: Settings = await loadSettings(browserApi.storage.local);
-  // Sev2 fix: off 상태여도 bootstrap은 하되 host display:none — 토글 왕복 지원.
 
   const deps: ScannerDeps = {
     now: () => performance.now(),
@@ -49,13 +49,14 @@ async function bootstrap(): Promise<void> {
   let container: ContainerTarget = detectScrollContainer(document, window);
   const host = mountShadowHost(document, WSM_Z_INDEX, deps.random);
 
-  // Settings → host 스타일 적용 (enabled/side/margin)
-  // !important로 호스트 페이지 CSS 승리 보장.
-  // iOS HIG 44pt 터치 타겟. 시각 슬림은 내부 track opacity로 표현.
-  const SLIM_WIDTH_PX = 44;
+  // shouldActivate는 런타임 평가로 전환 — 페이지가 짧다가 길어지는 경우(SPA/지연 로딩)
+  // 대응. bootstrap 조기 return 제거.
+  let isActivatable = shouldActivate(document, window);
+
   function applyPositionStyle() {
     const s = host.host.style;
-    s.setProperty('display', settings.enabled ? 'block' : 'none', 'important');
+    const visible = settings.enabled && isActivatable;
+    s.setProperty('display', visible ? 'block' : 'none', 'important');
     s.setProperty('width', `${SLIM_WIDTH_PX}px`, 'important');
     if (settings.side === 'right') {
       s.setProperty('right', `${settings.marginPx}px`, 'important');
@@ -64,7 +65,6 @@ async function bootstrap(): Promise<void> {
       s.setProperty('left', `${settings.marginPx}px`, 'important');
       s.setProperty('right', 'auto', 'important');
     }
-    // Shadow CSS가 side별 clip-path를 다르게 적용하기 위한 host 클래스.
     host.host.classList.toggle('wsm-side-left', settings.side === 'left');
     host.host.classList.toggle('wsm-side-right', settings.side === 'right');
   }
@@ -76,12 +76,14 @@ async function bootstrap(): Promise<void> {
     height: container.getHeight(),
     dpr: window.devicePixelRatio || 1,
     colorScheme,
+    side: settings.side,
   });
   renderer.mount();
 
   const magnifier = createMagnifier(host.root, colorScheme, settings.side);
+  const sectionBadge = createSectionBadge(host.root, settings.side);
 
-  // 검색 인덱스는 최초 스캔 시점에 지연 빌드 (비용 큼). 첫 검색 시 1회 생성.
+  // 검색 인덱스는 최초 스캔 시점에 지연 빌드.
   let searchCache: ReadonlyArray<SearchIndexEntry> | null = null;
   function ensureSearchIndex(): ReadonlyArray<SearchIndexEntry> {
     if (searchCache) return searchCache;
@@ -118,11 +120,14 @@ async function bootstrap(): Promise<void> {
     docHeight: container.getDocHeight(),
   });
   renderer.highlight('slim', vp());
+  sectionBadge.update(container.getScrollY(), lastResult.anchors);
 
   let scrollTicking = false;
   let lastTrailSampleAt = 0;
   let lastTrailY = container.getScrollY();
   let scrollTarget: EventTarget = container.kind === 'element' && container.el ? container.el : window;
+  let isScrubbing = false;
+  let badgeHideTimer: ReturnType<typeof setTimeout> | null = null;
 
   function sampleTrail() {
     const nowMs = performance.now();
@@ -141,6 +146,7 @@ async function bootstrap(): Promise<void> {
     requestAnimationFrame(() => {
       renderer.highlight('slim', vp());
       sampleTrail();
+      sectionBadge.update(container.getScrollY(), lastResult.anchors);
       scrollTicking = false;
     });
   }
@@ -150,6 +156,14 @@ async function bootstrap(): Promise<void> {
     scrollTarget.removeEventListener('scroll', onScroll as EventListener);
     scrollTarget = next;
     scrollTarget.addEventListener('scroll', onScroll, { passive: true } as AddEventListenerOptions);
+  }
+
+  function reevaluateActivation() {
+    const next = shouldActivate(document, window);
+    if (next !== isActivatable) {
+      isActivatable = next;
+      applyPositionStyle();
+    }
   }
 
   const hostEl = host.host;
@@ -163,12 +177,33 @@ async function bootstrap(): Promise<void> {
       if (added) renderer.setPins(pinStore.list());
     },
     onStateChange: (state) => {
-      // 슬림 ↔ 확장 전환: shadow host 클래스로 CSS opacity 전환 (폭은 유지, UX는 투명도로 표현)
-      if (state === 'scrubbing') host.host.classList.add('wsm-expanded');
-      else host.host.classList.remove('wsm-expanded');
-      if (state === 'idle') magnifier.hide();
+      isScrubbing = state === 'scrubbing';
+      if (isScrubbing) {
+        host.host.classList.add('wsm-expanded');
+        sectionBadge.show();
+        if (badgeHideTimer !== null) {
+          clearTimeout(badgeHideTimer);
+          badgeHideTimer = null;
+        }
+      } else {
+        host.host.classList.remove('wsm-expanded');
+        magnifier.hide();
+        // 배지는 스크럽 끝난 뒤 잠깐 유지 후 페이드 (UX 친절)
+        badgeHideTimer = setTimeout(() => {
+          sectionBadge.hide();
+          badgeHideTimer = null;
+        }, 900);
+      }
     },
-    onMagnify: (clientY, docY) => magnifier.show(clientY, docY, lastResult),
+    onMagnify: (clientY, docY) => {
+      magnifier.show(clientY, docY, lastResult);
+      sectionBadge.update(docY, lastResult.anchors);
+    },
+    onDoubleTap: () => {
+      // iPhone에서 검색 패널 진입 (Cmd+Shift+F 대체)
+      if (searchPanel.isOpen()) searchPanel.close();
+      else searchPanel.open();
+    },
   });
 
   const bus = createObserverBus(document);
@@ -178,6 +213,8 @@ async function bootstrap(): Promise<void> {
       renderer.update(lastResult);
       renderer.highlight('slim', vp());
       invalidateSearchIndex();
+      reevaluateActivation();
+      sectionBadge.update(container.getScrollY(), lastResult.anchors);
     },
     { debounceMs: TUNING.mutationDebounceMs },
   );
@@ -191,14 +228,16 @@ async function bootstrap(): Promise<void> {
     renderer.highlight('slim', vp());
     invalidateSearchIndex();
     searchPanel.close();
-    magnifier.hide(); // Sev2 fix: SPA nav 시 잔상 제거
+    magnifier.hide();
+    sectionBadge.hide();
+    reevaluateActivation();
   });
 
   const vvDisposable = bus.onVisualViewportChange(() => {
     renderer.highlight('slim', vp());
   });
 
-  // 수동 피커 (활성 Disposable 1개만 유지)
+  // 수동 피커
   let activePicker: Disposable | null = null;
   function startManualPicker() {
     activePicker?.dispose();
@@ -210,6 +249,7 @@ async function bootstrap(): Promise<void> {
         lastResult = scanner.scan(currentScanRoot());
         renderer.update(lastResult);
         renderer.highlight('slim', vp());
+        reevaluateActivation();
         activePicker = null;
       },
     });
@@ -225,17 +265,16 @@ async function bootstrap(): Promise<void> {
     switch (msg.type) {
       case 'get-status': {
         const status: PageStatus = {
-          activatable: true,
+          activatable: isActivatable,
           anchorCount: lastResult.anchors.length,
           docHeight: lastResult.docHeight,
-          containerKind: container.kind,
+          containerKind: isActivatable ? container.kind : 'none',
           pinCount: pinStore.list().length,
         };
         sendResponse({ ok: true, status } satisfies WsmResponse);
         return false;
       }
       case 'settings-changed': {
-        // Sev2 fix: teardown 대신 host hide — enabled 토글 왕복 시 재bootstrap 불필요.
         settings = msg.settings;
         applyPositionStyle();
         sendResponse({ ok: true } satisfies WsmResponse);
@@ -259,7 +298,6 @@ async function bootstrap(): Promise<void> {
   };
   browserApi.runtime.onMessage.addListener(onMessage);
 
-  // Global shortcuts: Alt+Shift+M (picker), Cmd/Ctrl+Shift+F (custom search panel — S7)
   function isEditableTarget(t: EventTarget | null): boolean {
     if (!(t instanceof HTMLElement)) return false;
     const tag = t.tagName;
@@ -268,7 +306,6 @@ async function bootstrap(): Promise<void> {
     return false;
   }
   function onGlobalKey(e: KeyboardEvent) {
-    // Sev1 fix: editable 포커스 중엔 단축키 스킵 (타이핑 방해 금지).
     if (isEditableTarget(e.target)) return;
     if (e.altKey && e.shiftKey && (e.key === 'M' || e.key === 'm')) {
       startManualPicker();
@@ -282,13 +319,19 @@ async function bootstrap(): Promise<void> {
   }
   document.addEventListener('keydown', onGlobalKey);
 
-  const disposables: Disposable[] = [scrubber, muteDisposable, spaDisposable, vvDisposable, searchPanel];
+  // window resize시 activation 재평가
+  const onResize = () => reevaluateActivation();
+  window.addEventListener('resize', onResize, { passive: true });
+
+  const disposables: Disposable[] = [scrubber, muteDisposable, spaDisposable, vvDisposable, searchPanel, sectionBadge];
   let tornDown = false;
   function teardown() {
     if (tornDown) return;
     tornDown = true;
     scrollTarget.removeEventListener('scroll', onScroll as EventListener);
     document.removeEventListener('keydown', onGlobalKey);
+    window.removeEventListener('resize', onResize);
+    if (badgeHideTimer !== null) clearTimeout(badgeHideTimer);
     activePicker?.dispose();
     activePicker = null;
     for (const d of disposables) d.dispose();

@@ -25,6 +25,9 @@ export function createCanvasRenderer(root: ShadowRoot, opts: RendererOptions): M
   let lastPins: ReadonlyArray<Pin> = [];
   let lastTrail: ReadonlyArray<TrailSegment> = [];
   let lastHits: ReadonlyArray<SearchHitMark> = [];
+  let lastState: MinimapState = 'slim';
+  let lastViewport: ViewportRect = { scrollY: 0, height: 0, docHeight: 1 };
+  const isRight = opts.side === 'right';
 
   const ctx = canvas.getContext('2d');
 
@@ -39,6 +42,8 @@ export function createCanvasRenderer(root: ShadowRoot, opts: RendererOptions): M
 
   function drawAll(state: MinimapState, viewport: ViewportRect) {
     if (!ctx || !lastResult) return;
+    lastState = state;
+    lastViewport = viewport;
     const t0 = performance.now();
     const W = opts.width;
     const H = opts.height;
@@ -63,25 +68,25 @@ export function createCanvasRenderer(root: ShadowRoot, opts: RendererOptions): M
       ctx.fillRect(0, y0, 1, Math.max(1, y1 - y0));
     }
 
-    // anchors
+    // anchors — side-aware edge 앵커 (바의 보이는 가장자리에서 뻗어나감)
     for (const a of lastResult.anchors) {
       const y = a.y * scale;
       const h = LINE_HEIGHT_BY_KIND[a.type] ?? 1;
+      let widthPct = 0.4;
+      let color = palette.heading3;
       switch (a.type) {
-        case AnchorKind.Heading1:
-          ctx.fillStyle = palette.heading1; ctx.fillRect(W * 0.1, y, W * 0.8, h); break;
-        case AnchorKind.Heading2:
-          ctx.fillStyle = palette.heading2; ctx.fillRect(W * 0.2, y, W * 0.65, h); break;
-        case AnchorKind.Heading3:
-          ctx.fillStyle = palette.heading3; ctx.fillRect(W * 0.3, y, W * 0.5, h); break;
+        case AnchorKind.Heading1: widthPct = 0.9; color = palette.heading1; break;
+        case AnchorKind.Heading2: widthPct = 0.75; color = palette.heading2; break;
+        case AnchorKind.Heading3: widthPct = 0.6; color = palette.heading3; break;
         case AnchorKind.Image:
-        case AnchorKind.Video:
-          ctx.fillStyle = palette.media; ctx.fillRect(W * 0.35, y, W * 0.45, h); break;
-        case AnchorKind.StrongText:
-          ctx.fillStyle = palette.heading3; ctx.fillRect(W * 0.45, y, W * 0.3, h); break;
-        case AnchorKind.LinkCluster:
-          ctx.fillStyle = palette.link; ctx.fillRect(W * 0.55, y, W * 0.25, h); break;
+        case AnchorKind.Video: widthPct = 0.55; color = palette.media; break;
+        case AnchorKind.StrongText: widthPct = 0.35; color = palette.heading3; break;
+        case AnchorKind.LinkCluster: widthPct = 0.25; color = palette.link; break;
       }
+      const w = W * widthPct;
+      const x = isRight ? W - w : 0;
+      ctx.fillStyle = color;
+      ctx.fillRect(x, y, w, h);
     }
 
     // viewport indicator
@@ -99,11 +104,12 @@ export function createCanvasRenderer(root: ShadowRoot, opts: RendererOptions): M
       }
     }
 
-    // pins
+    // pins — 바의 보이는 가장자리에 solid dot
     for (const p of lastPins) {
       const y = p.y * scale;
-      ctx.fillStyle = p.color ?? palette.heading1;
-      ctx.fillRect(W * 0.05, y - 1.5, W * 0.2, 3);
+      ctx.fillStyle = p.color ?? palette.searchGlow;
+      const px = isRight ? W - 6 : 0;
+      ctx.fillRect(px, y - 3, 6, 6);
     }
 
     ctx.restore();
@@ -124,12 +130,16 @@ export function createCanvasRenderer(root: ShadowRoot, opts: RendererOptions): M
     },
     setPins(pins) {
       lastPins = pins;
+      // 즉시 재드로우 (dom renderer와 대칭)
+      if (lastResult) drawAll(lastState, lastViewport);
     },
     setTrail(segs) {
       lastTrail = segs;
+      if (lastResult) drawAll(lastState, lastViewport);
     },
     setSearchHits(hits) {
       lastHits = hits;
+      if (lastResult) drawAll(lastState, lastViewport);
     },
     destroy() {
       canvas.remove();

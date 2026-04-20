@@ -98,7 +98,11 @@ export function createMagnifier(
       let label = `${Math.round(docY)}px`;
       if (result) {
         const a = nearestAnchor(docY, result.anchors);
-        if (a) label = `${labelFor(a.type)} · ${label}`;
+        if (a) {
+          const kindTxt = labelFor(a.type);
+          // snippet 있으면 실제 제목 표시, 없으면 kind · px
+          label = a.snippet ? `${kindTxt} · ${a.snippet}` : `${kindTxt} · ${label}`;
+        }
       }
       el.textContent = label;
       el.style.opacity = '1';

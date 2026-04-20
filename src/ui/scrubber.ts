@@ -9,6 +9,8 @@ export const SNAP_THRESHOLD = TUNING.snapThresholdPx;
 export const EDGE_MARGIN = TUNING.edgeMarginPx;
 export const LONG_PRESS_MS = 500;
 export const LONG_PRESS_MOVE_TOLERANCE_PX = 6;
+export const DOUBLE_TAP_MS = 280;
+export const DOUBLE_TAP_MOVE_TOLERANCE_PX = 12;
 
 export interface ScrubberApi {
   scrollTo(y: number): void;
@@ -19,6 +21,7 @@ export interface ScrubberApi {
   onStateChange?(state: 'idle' | 'scrubbing'): void;
   onLongPress?(y: number): void;
   onMagnify?(clientY: number, docY: number): void;
+  onDoubleTap?(): void;
 }
 
 export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
@@ -34,6 +37,11 @@ export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
   let longPressFired = false;
   // Sev1 fix: pin 후보 기간 동안엔 scroll을 보류. 실제 scrub은 move/시간초과 이후.
   let scrollGated = false;
+  // Double tap 감지
+  let lastTapAt = 0;
+  let lastTapX = 0;
+  let lastTapY = 0;
+  let moved = false;
 
   function clearLongPress() {
     if (longPressTimer !== null) {
@@ -83,6 +91,7 @@ export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
       return;
     }
     active = true;
+    moved = false;
     longPressFired = false;
     longPressDownX = e.clientX;
     longPressDownY = e.clientY;
@@ -128,6 +137,9 @@ export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
         scrollGated = false; // scrub 시작
       }
     }
+    const mdx = e.clientX - longPressDownX;
+    const mdy = e.clientY - longPressDownY;
+    if (Math.hypot(mdx, mdy) > DOUBLE_TAP_MOVE_TOLERANCE_PX) moved = true;
     if (longPressFired) return; // pin fired; don't also scrub
     if (scrollGated) return;
     pendingY = mapEventToY(e.clientY);
@@ -146,6 +158,24 @@ export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
       if (!ticking) {
         ticking = true;
         requestAnimationFrame(applyScroll);
+      }
+    }
+    // Double-tap 감지: 움직이지 않은 짧은 탭이 연속 2번 + 핀 미발화
+    if (e && !moved && !longPressFired) {
+      const now = performance.now();
+      const dx = Math.abs(e.clientX - lastTapX);
+      const dy = Math.abs(e.clientY - lastTapY);
+      if (
+        now - lastTapAt < DOUBLE_TAP_MS &&
+        dx < DOUBLE_TAP_MOVE_TOLERANCE_PX * 2 &&
+        dy < DOUBLE_TAP_MOVE_TOLERANCE_PX * 4
+      ) {
+        api.onDoubleTap?.();
+        lastTapAt = 0;
+      } else {
+        lastTapAt = now;
+        lastTapX = e.clientX;
+        lastTapY = e.clientY;
       }
     }
     clearLongPress();

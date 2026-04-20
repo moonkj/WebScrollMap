@@ -76,6 +76,29 @@ export function mountShadowHost(
       -webkit-clip-path: inset(0);
       clip-path: inset(0);
     }
+    @keyframes wsm-pin-pulse {
+      0% { transform: translateY(-50%) scale(2); opacity: 0.2; }
+      40% { transform: translateY(-50%) scale(1.3); opacity: 1; }
+      100% { transform: translateY(-50%) scale(1); opacity: 1; }
+    }
+    .wsm-section-badge {
+      position: absolute;
+      top: 12px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font: 600 11px/1.2 -apple-system, system-ui, sans-serif;
+      color: #fff;
+      background: rgba(15,23,42,0.92);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+      white-space: nowrap;
+      max-width: 240px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 160ms ease-out;
+    }
+    .wsm-section-badge.wsm-visible { opacity: 1; }
   `;
   root.appendChild(style);
 

@@ -33,6 +33,7 @@ export function createDomRenderer(root: ShadowRoot, opts: RendererOptions): Mini
 
   let palette: Palette = paletteFor(opts.colorScheme);
   let docHeight = 1;
+  const isRight = opts.side === 'right';
 
   function applyPalette() {
     container.style.backgroundColor = palette.track;
@@ -45,17 +46,22 @@ export function createDomRenderer(root: ShadowRoot, opts: RendererOptions): Mini
     for (const a of result.anchors) {
       const marker = doc.createElement('div');
       const yPct = (a.y / docHeight) * 100;
-      let w = 40, left = 30, color = palette.heading3;
+      // width/height 강화: 히트맵 느낌. 큰 anchor는 두꺼운 바.
+      let w = 40, h = 2, color = palette.heading3;
       switch (a.type) {
-        case AnchorKind.Heading1: w = 80; left = 10; color = palette.heading1; break;
-        case AnchorKind.Heading2: w = 65; left = 20; color = palette.heading2; break;
-        case AnchorKind.Heading3: w = 50; left = 30; color = palette.heading3; break;
+        case AnchorKind.Heading1: w = 90; h = 3; color = palette.heading1; break;
+        case AnchorKind.Heading2: w = 75; h = 2; color = palette.heading2; break;
+        case AnchorKind.Heading3: w = 60; h = 2; color = palette.heading3; break;
         case AnchorKind.Image:
-        case AnchorKind.Video: w = 45; left = 35; color = palette.media; break;
-        case AnchorKind.StrongText: w = 30; left = 45; color = palette.heading3; break;
-        case AnchorKind.LinkCluster: w = 25; left = 55; color = palette.link; break;
+        case AnchorKind.Video: w = 55; h = 3; color = palette.media; break;
+        case AnchorKind.StrongText: w = 35; h = 1; color = palette.heading3; break;
+        case AnchorKind.LinkCluster: w = 25; h = 1; color = palette.link; break;
       }
-      marker.style.cssText = `position:absolute;top:${yPct.toFixed(3)}%;left:${left}%;width:${w}%;height:1px;background:${color};`;
+      // side-aware: 바의 보이는 edge(우측이면 right 0, 좌측이면 left 0)에서 뻗어나감
+      const edgeStyle = isRight
+        ? `right:2%;width:${w}%;`
+        : `left:2%;width:${w}%;`;
+      marker.style.cssText = `position:absolute;top:${yPct.toFixed(3)}%;${edgeStyle}height:${h}px;background:${color};`;
       track.appendChild(marker);
     }
   }
@@ -84,7 +90,11 @@ export function createDomRenderer(root: ShadowRoot, opts: RendererOptions): Mini
       for (const p of pins) {
         const el = doc.createElement('div');
         const yPct = (p.y / (docHeight || 1)) * 100;
-        el.style.cssText = `position:absolute;top:${yPct.toFixed(3)}%;left:5%;width:20%;height:3px;background:${p.color ?? palette.heading1};border-radius:2px;`;
+        // 바의 보이는 가장자리(외곽 6px clip 영역) 안에 렌더. 3×6px solid dot.
+        const edgeStyle = isRight
+          ? 'right:0;width:6px;'
+          : 'left:0;width:6px;';
+        el.style.cssText = `position:absolute;top:${yPct.toFixed(3)}%;transform:translateY(-50%);${edgeStyle}height:6px;background:${p.color ?? palette.searchGlow};border-radius:2px;box-shadow:0 0 6px ${p.color ?? palette.searchGlow};animation:wsm-pin-pulse 500ms ease-out;`;
         if (p.label) el.setAttribute('aria-label', p.label);
         pinsLayer.appendChild(el);
       }
