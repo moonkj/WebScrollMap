@@ -1,0 +1,13 @@
+{
+  "firstRenderMs": { "p50": 150, "p95": 300 },
+  "scanMs": {
+    "anchors_500": 8,
+    "anchors_2000": 20,
+    "anchors_5000": 50
+  },
+  "scrubFps": { "min": 58, "redline": 55 },
+  "tapToScrollMs": 16,
+  "memoryMb": { "ios": 15, "macos": 30 },
+  "spaNavHeapGrowthMb": 2,
+  "drawBudgetMsPerFrame": 4
+}
