@@ -5,6 +5,7 @@ import { createScrubber } from '@ui/scrubber';
 import { createMagnifier } from '@ui/magnifier';
 import { createSearchPanel } from '@ui/searchPanel';
 import { createSectionBadge } from '@ui/sectionBadge';
+import { createFloatingPins } from '@ui/floatingPins';
 import { buildSearchIndex, searchIndex, type SearchIndexEntry } from '@core/searchIndex';
 import { createObserverBus } from '@platform/observerBus';
 import { detectScrollContainer, elementTarget } from '@platform/container';
@@ -109,6 +110,17 @@ async function bootstrap(): Promise<void> {
   const pinStore = createPinStore(signedStorage, location.pathname, deps.random);
   const trailStore = createTrailStore(signedStorage, location.pathname);
 
+  const floatingPins = createFloatingPins(host.root, {
+    side: settings.side,
+    scheme: colorScheme,
+    onJump: (pin) => container.setScrollY(pin.y),
+    onDelete: (pinId) => {
+      pinStore.remove(pinId);
+      renderer.setPins(pinStore.list());
+      floatingPins.update(pinStore.list(), container.getDocHeight());
+    },
+  });
+
   function currentScanRoot(): Element {
     return container.kind === 'element' && container.el ? container.el : document.body;
   }
@@ -117,6 +129,7 @@ async function bootstrap(): Promise<void> {
   renderer.update(lastResult);
   renderer.setPins(pinStore.list());
   renderer.setTrail(trailStore.list());
+  floatingPins.update(pinStore.list(), container.getDocHeight());
 
   const vp = (): ViewportRect => ({
     scrollY: container.getScrollY(),
@@ -178,10 +191,12 @@ async function bootstrap(): Promise<void> {
     getViewportHeight: () => container.getHeight(),
     onLongPress: (_barY) => {
       // 핀 = "여기가 중요해 — 여기로 돌아오고 싶어" → 현재 스크롤 위치를 북마크
-      // (바의 어느 위치를 눌렀는지는 무관 — 기준점은 "지금 보고 있는 곳")
       const currentScroll = container.getScrollY();
       const added = pinStore.add({ y: currentScroll });
-      if (added) renderer.setPins(pinStore.list());
+      if (added) {
+        renderer.setPins(pinStore.list());
+        floatingPins.update(pinStore.list(), container.getDocHeight());
+      }
     },
     onStateChange: (state) => {
       isScrubbing = state === 'scrubbing';
@@ -237,6 +252,7 @@ async function bootstrap(): Promise<void> {
     searchPanel.close();
     magnifier.hide();
     sectionBadge.hide();
+    floatingPins.update([], container.getDocHeight());
     reevaluateActivation();
   });
 
@@ -284,12 +300,14 @@ async function bootstrap(): Promise<void> {
       case 'settings-changed': {
         settings = msg.settings;
         applyPositionStyle();
+        floatingPins.setSide(settings.side);
         sendResponse({ ok: true } satisfies WsmResponse);
         return false;
       }
       case 'clear-pins': {
         pinStore.clear();
         renderer.setPins([]);
+        floatingPins.update([], container.getDocHeight());
         sendResponse({ ok: true } satisfies WsmResponse);
         return false;
       }
@@ -319,6 +337,7 @@ async function bootstrap(): Promise<void> {
       case 'delete-pin': {
         pinStore.remove(msg.pinId);
         renderer.setPins(pinStore.list());
+        floatingPins.update(pinStore.list(), container.getDocHeight());
         sendResponse({ ok: true } satisfies WsmResponse);
         return false;
       }
@@ -353,7 +372,7 @@ async function bootstrap(): Promise<void> {
   const onResize = () => reevaluateActivation();
   window.addEventListener('resize', onResize, { passive: true });
 
-  const disposables: Disposable[] = [scrubber, muteDisposable, spaDisposable, vvDisposable, searchPanel, sectionBadge];
+  const disposables: Disposable[] = [scrubber, muteDisposable, spaDisposable, vvDisposable, searchPanel, sectionBadge, floatingPins];
   let tornDown = false;
   function teardown() {
     if (tornDown) return;
