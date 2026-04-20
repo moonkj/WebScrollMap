@@ -42,10 +42,20 @@ export async function restorePurchases(): Promise<Entitlement | null> {
   return r?.entitlement ?? null;
 }
 
-// Fire-and-forget haptic — await 하지 않고 바로 반환. Performance 권고.
+// Fire-and-forget haptic. iOS Safari Web Extension에서는 content→background→native
+// 경유가 필요하므로 sendMessage + sendNativeMessage 둘 다 시도.
 export function playHaptic(kind: 'snap' | 'pin' | 'edge'): void {
-  if (!nativeAvailable()) return;
-  void send({ type: 'haptic', kind });
+  const api = getBrowserApi();
+  // 1) background 경유 (iOS Safari)
+  try {
+    void api.runtime.sendMessage({ type: 'haptic', kind });
+  } catch {
+    // noop
+  }
+  // 2) 직접 native (macOS)
+  if (nativeAvailable()) {
+    void send({ type: 'haptic', kind });
+  }
 }
 
 export function isNativeHostAvailable(): boolean {

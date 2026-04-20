@@ -302,6 +302,9 @@ async function bootstrap(): Promise<void> {
     snapCandidates: () => lastResult.anchors.map((a) => a.y),
     getDocHeight: () => container.getDocHeight(),
     getViewportHeight: () => container.getHeight(),
+    onHaptic: (kind) => {
+      if (isFeatureAvailable(tier, 'haptic')) playHaptic(kind);
+    },
     onLongPress: (barDocY) => {
       if (!isFeatureAvailable(tier, 'pin-drop')) {
         showLock('pin-drop');

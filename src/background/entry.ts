@@ -91,6 +91,18 @@ api.runtime.onMessage.addListener((raw, _sender, sendResponse) => {
         .catch((e) => sendResponse({ ok: false, error: String(e) } satisfies WsmResponse));
       return true;
     }
+    case 'haptic': {
+      // native로 forward (응답 무시, fire-and-forget)
+      const nativeApi = api as unknown as {
+        runtime: { sendNativeMessage?: (appId: string, msg: unknown) => Promise<unknown> };
+      };
+      const NATIVE_APP_ID = 'com.kjmoon.WebScrollMap.Native';
+      if (typeof nativeApi.runtime.sendNativeMessage === 'function') {
+        nativeApi.runtime.sendNativeMessage(NATIVE_APP_ID, msg).catch(() => {});
+      }
+      sendResponse({ ok: true } satisfies WsmResponse);
+      return false;
+    }
     case 'get-entitlement':
     case 'purchase-pro':
     case 'restore-purchases': {
