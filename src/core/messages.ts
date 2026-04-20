@@ -9,7 +9,7 @@ export interface Settings {
   enabled: boolean;
   side: 'left' | 'right';
   marginPx: 0 | 8 | 16 | 24 | 32;
-  barWidthPx: 3 | 6 | 12;
+  barWidthPx: 4 | 10 | 20;
   floatingOpacity: FloatingOpacity;
   smartFilter: SmartFilter;
   theme: ThemeName;
@@ -21,7 +21,7 @@ export const DEFAULT_SETTINGS: Settings = {
   enabled: true,
   side: 'right',
   marginPx: 16,
-  barWidthPx: 6,
+  barWidthPx: 10,
   floatingOpacity: 100,
   smartFilter: 'all',
   theme: 'default',

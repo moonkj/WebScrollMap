@@ -332,7 +332,7 @@ async function init() {
   document.querySelectorAll<HTMLButtonElement>('[data-barwidth]').forEach((b) =>
     b.addEventListener('click', async () => {
       const raw = Number(b.dataset.barwidth);
-      const w = ([3, 6, 12] as const).includes(raw as 3) ? (raw as 3 | 6 | 12) : 6;
+      const w = ([4, 10, 20] as const).includes(raw as 4) ? (raw as 4 | 10 | 20) : 10;
       const next = await saveSettings({ barWidthPx: w });
       if (next) { settings = next; renderSettingsUI(settings); }
     }),

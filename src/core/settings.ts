@@ -10,7 +10,7 @@ function sanitize(raw: unknown): Settings {
   const src = (raw && typeof raw === 'object' ? raw : {}) as Partial<Settings>;
   const opacity = src.floatingOpacity === 40 || src.floatingOpacity === 70 ? src.floatingOpacity : 100;
   const margin = [0, 8, 16, 24, 32].includes(src.marginPx as number) ? (src.marginPx as Settings['marginPx']) : 16;
-  const barW = [3, 6, 12].includes(src.barWidthPx as number) ? (src.barWidthPx as Settings['barWidthPx']) : 6;
+  const barW = [4, 10, 20].includes(src.barWidthPx as number) ? (src.barWidthPx as Settings['barWidthPx']) : 10;
   const filter = ['all', 'headings', 'media'].includes(src.smartFilter as string) ? (src.smartFilter as Settings['smartFilter']) : 'all';
   const theme = ['default', 'sunset', 'ocean', 'forest', 'mono'].includes(src.theme as string) ? (src.theme as Settings['theme']) : 'default';
   return {

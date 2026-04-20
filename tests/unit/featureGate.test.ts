@@ -18,7 +18,7 @@ describe('feature gate', () => {
       ...DEFAULT_SETTINGS,
       side: 'right' as const,
       marginPx: 32 as const,
-      barWidthPx: 12 as const,
+      barWidthPx: 20 as const,
       floatingOpacity: 40 as const,
       smartFilter: 'headings' as const,
       theme: 'sunset' as const,
@@ -27,7 +27,7 @@ describe('feature gate', () => {
     const free = applyTierConstraints('free', custom);
     expect(free.side).toBe('left');
     expect(free.marginPx).toBe(16);
-    expect(free.barWidthPx).toBe(6);
+    expect(free.barWidthPx).toBe(10);
     expect(free.floatingOpacity).toBe(100);
     expect(free.smartFilter).toBe('all');
     expect(free.theme).toBe('default');

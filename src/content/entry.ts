@@ -58,6 +58,13 @@ function domReady(): Promise<void> {
 async function bootstrap(): Promise<void> {
   await domReady();
 
+  // 중복 주입 방지 — iOS Safari가 SPA/frame 등으로 content script를 두 번 로드하는
+  // 케이스에서 두 개의 shadow host / 플로팅 메모장이 겹치는 버그를 차단.
+  interface WsmGlobal { __WEB_SCROLL_MAP_LOADED__?: boolean; }
+  const w = window as unknown as WsmGlobal;
+  if (w.__WEB_SCROLL_MAP_LOADED__) return;
+  w.__WEB_SCROLL_MAP_LOADED__ = true;
+
   const browserApi = getBrowserApi();
   let settings: Settings = await loadSettings(browserApi.storage.local);
 
@@ -107,6 +114,8 @@ async function bootstrap(): Promise<void> {
 
   const scanner = createScanner(deps);
   let container: ContainerTarget = detectScrollContainer(document, window);
+  // 과거 주입에서 남은 host 잔존 제거 (side 전환 누적 버그 복구)
+  document.querySelectorAll('[data-wsm="1"]').forEach((el) => el.remove());
   const host = mountShadowHost(document, WSM_Z_INDEX, deps.random);
 
   // shouldActivate는 런타임 평가로 전환 — 페이지가 짧다가 길어지는 경우(SPA/지연 로딩)
@@ -293,15 +302,21 @@ async function bootstrap(): Promise<void> {
     snapCandidates: () => lastResult.anchors.map((a) => a.y),
     getDocHeight: () => container.getDocHeight(),
     getViewportHeight: () => container.getHeight(),
-    onLongPress: (_barY) => {
+    onLongPress: (barDocY) => {
       if (!isFeatureAvailable(tier, 'pin-drop')) {
         showLock('pin-drop');
         return;
       }
-      const currentScroll = container.getScrollY();
-      // 현재 스크롤 위치 근처의 heading snippet을 label로 저장 → 핀 리스트에 제목 표시
-      const label = findNearestHeadingLabel(currentScroll + container.getHeight() / 2, lastResult.anchors);
-      const added = pinStore.add(label ? { y: currentScroll, label } : { y: currentScroll });
+      // 바 누른 위치를 뷰포트 중앙에 맞춰 페이지 스크롤 → 실제 scrollY를 핀으로 저장
+      // (clamping 반영, 다른곳 길게 누르면 그곳으로 이동)
+      const targetScrollY = Math.max(0, barDocY - container.getHeight() / 2);
+      container.setScrollY(targetScrollY);
+      const actualScrollY = container.getScrollY(); // 브라우저 clamping 후 실제 값
+      const label = findNearestHeadingLabel(
+        actualScrollY + container.getHeight() / 2,
+        lastResult.anchors,
+      );
+      const added = pinStore.add(label ? { y: actualScrollY, label } : { y: actualScrollY });
       if (added) {
         renderer.setPins(pinStore.list());
         floatingPins.update(pinStore.list(), container.getDocHeight());

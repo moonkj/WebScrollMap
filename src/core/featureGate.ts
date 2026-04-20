@@ -35,7 +35,7 @@ export function applyTierConstraints(tier: Tier, settings: Settings): Settings {
     ...settings,
     side: 'left',
     marginPx: 16,
-    barWidthPx: 6,
+    barWidthPx: 10,
     floatingOpacity: 100,
     smartFilter: 'all',
     theme: 'default',
