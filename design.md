@@ -1,7 +1,8 @@
-# WebScrollMap — 설계 요약 (Architect v2, 개선 R2)
+# WebScrollMap — 설계 요약 (Architect v3, 2차 리뷰 라운드)
 
-> v1 대비 변경: Reviewer R2 지적 5건 전부 반영 (Sev1 1건, Sev2 3건, Sev3 1건).
-> **R2 변경 로그는 §10 참조.**
+> v2 대비 변경: 2차 팀 리뷰(UX·Debugger·Performance·Test)에서 **온보딩·프라이버시·에너지 계측·릴리스 운영** 레이어 확정.
+> App Store 심사 블로커 🚨 6건 식별 → 설계에 선반영.
+> **R2+ 변경 로그는 §12, 과학적 토론 추가 결론은 §13 참조.**
 
 
 > 팀 리더(Architect) 최종 통합안. UX · Debugger · Performance · Test 4팀의 병렬 리뷰를 바탕으로 과학적 토론을 조율하고 교차 레이어 충돌을 해소.
@@ -167,8 +168,75 @@ Coder에게 요구:
 | R2-4 | 성능 예산 검증 자동화 경로 불명 | Sev2 | `perf-budget.json` 루트에 커밋 + Playwright `performance.mark` 스모크 + CI에서 회귀 자동 리포트 (Test Engineer 제안 연동). |
 | R2-5 | Mutation debounce 500ms 매직넘버 | Sev3 | `/src/config/tuning.ts`로 격리 + 사이트 프로파일 훅 자리 예약 (값은 500 유지). |
 
-## 11. 리스크 대시보드 (Debugger H1~H12 매핑)
+## 12. R2+ 라운드 결론 (온보딩·프라이버시·운영)
 
-- **Must-fix (배포 블로커)**: H1(엣지 스와이프), H3(Mutation 폭주), H5(내부 스크롤), H6(가상 스크롤), H12(메모리 누수) — 모두 위 설계에 반영
-- **Guard**: H2(Shadow DOM 누수), H4(SPA), H7(sticky), H9(zoom/DPR), H10(다크 휘도) — 각 모듈에 방어 로직 필수
+### 12.1 권한 모델 (App Store 블로커 S1 대응 🚨)
+- **`<all_urls>` 유지 + optional host permissions 토글** (Debate 2 결론)
+  - 이유: activeTab 단독은 Pin/Trail 지속성(S2) 붕괴
+  - 권한 요청은 **설치 직후 금지**, 첫 Pin 시도 시점에 맥락 모달로 유도
+  - Privacy Manifest `PrivacyInfo.xcprivacy`에 정당화 문구 + DTS pre-review
+
+### 12.2 데이터 경계 & App Privacy 라벨 🚨
+- Pin/Trail의 pathname 저장 → **"Browsing History" 라벨 선제 명시** (S3)
+- 검색 발광은 **커스텀 검색 패널로 전환**, 네이티브 Cmd+F 가로채기 금지 (S7)
+- Private 탭: 기능 축소 + 텔레메트리 완전 OFF + Pin 세션 종료 시 파기 (S12)
+
+### 12.3 저장 보안
+- `sessionStorage` 확정 유지, 단 **HMAC 스키마 검증 레이어 추가** (S6)
+- Pin target URL은 **same-origin + same-path prefix만 허용** (`javascript:`/`data:`/cross-origin 거부)
+- HMAC 키는 `browser.storage.session` (신뢰 경계 분리)
+- 탭 복제 시 유령 방지 UUID (S14)
+
+### 12.4 온보딩 3-step (UX R2 확정)
+1. 권한 허용 안내 (Safari 네이티브 토글 설명)
+2. 첫 사이트 활성화 + Pull Handle 코치마크
+3. 익명 오류 리포트 **옵트인 (기본 OFF)** — PIPA/GDPR/CCPA 준수
+- 튜토리얼 스킵 허용, popup 하단 "다시 보기" 상시 (Debate UX-1)
+- 데모 페이지는 **확장 번들 내장 정적 HTML** (외부 CDN 금지, S13)
+
+### 12.5 수익화 = **일회성 + Tip Jar 하이브리드** (UX Debate UX-2)
+- Pro 일회성 $4.99 + 별도 Tip (구독 기각: 1인 CS 부담)
+- 페이월: 3일차 + 활성 사용 5회 이후 1회 배너, 닫으면 30일 침묵
+- 기능 제한 방식 (14일 trial 기각)
+- **라이선스 검증은 네이티브 StoreKit 쪽에서만** (S10) — 확장 JS에 비밀 금지
+
+### 12.6 에너지/계측 (Performance R2)
+- **Playwright perf 게이트**: p95 기준 + 5회 반복 median (Performance Debate)
+- 5개 핵심 지표: `firstMinimapPaint`, `scrubP95FrameTime`, `anchorBuildTime`, `mutationBatchMs`, `memoryDeltaMB`
+- 합성 PR 게이트 + **주 1회 실기기 canary** (카나리는 배터리 측정용)
+- 텔레메트리 **opt-in + 로컬 100개 링 버퍼** + 사용자가 "리포트 보내기" 눌러야 전송
+- 3단계 quality mode: **full / balanced / lite** (배터리/저사양/저전력 자동 전환, 쿨다운 10s)
+
+### 12.7 릴리스 게이트 (Test R2)
+- **공개 베타 기각, 초대 20명 비공개** (1인 CS 부담)
+- Safari WE는 **TestFlight 불가** → Developer ID 직접 배포 + App Store 비공개 링크
+- 졸업 기준: Crash-free >99.5%, Sev1 <2건/주, 세션당 인터랙션 ≥3회
+- **Sentry 무료 플랜** 채택 (URL·DOM 텍스트 scrubbing 적용)
+- 킬 스위치는 원격 config JSON(데이터만, 로직 금지)
+
+### 12.8 i18n 1차: 한 · 영 · 일
+- RTL(아랍어) 감지 시 Pull Handle 좌측 자동 미러, "좌/우" → "시작/끝" 리라벨
+- 일본어 세로쓰기 감지 시 미니맵 가로축 회전 or 비활성 (§11 H11과 정합)
+- 용어: Pin Drop→"핀 꽂기", Scrub→음차 유지, Progress Trail→"지나온 길"
+
+## 13. R2+ 과학적 토론 결론 🧪 (누적)
+
+| ID | 주제 | 결론 |
+|---|---|---|
+| D7 UX | 튜토리얼 스킵 vs 강제 | **스킵 허용** (권한 단계에서 이미 인내비용↑, D7 리텐션 보호) |
+| D8 UX | 14일 trial vs 기능 제한 | **기능 제한** (1인 CS 자동화 용이) |
+| D9 Sec | 텔레메트리 off vs opt-out | **opt-in + 로컬 링 버퍼** (사용자 동의 시만 flush) |
+| D10 Sec | activeTab vs `<all_urls>` | **`<all_urls>` + optional host 토글** (Pin/Trail 지속성 사수) |
+| D11 Sec | `sessionStorage` vs `storage.session` | **하이브리드** — 표시용은 sessionStorage, HMAC 키는 `storage.session` |
+| D12 Perf | p50 vs p95 게이트 | **p95** (꼬리 성능이 체감 품질), p50 info만 |
+| D13 Perf | 실기기 vs 합성 | **합성 PR 게이트 + 주 1회 실기기 canary** |
+| D14 Test | 공개 베타 vs 비공개 | **초대 20명 비공개** (시그널:노이즈) |
+| D15 Test | Sentry vs 자가 엔드포인트 | **Sentry 무료 + scrubbing** (보존/삭제 책임 외주) |
+
+## 14. 리스크 대시보드 (Debugger H1~H12 + S1~S15 매핑)
+
+- **Must-fix 기술 (배포 블로커)**: H1(엣지 스와이프), H3(Mutation 폭주), H5(내부 스크롤), H6(가상 스크롤), H12(메모리 누수)
+- **Guard**: H2(Shadow DOM 누수), H4(SPA), H7(sticky), H9(zoom/DPR), H10(다크 휘도)
 - **Advisory**: H8(CSP), H11(RTL/vertical) — 감지 후 사일런트 비활성
+- **🚨 App Store 심사 블로커**: S1(권한), S3(Browsing History), S7(Cmd+F), S9(GDPR/PIPA), S11(공급망), S12(Private), S13(외부 CDN) — §12에 모두 반영
+- **보안 Guard**: S4(prototype pollution), S5(Shadow host 변조), S6(storage 오염), S10(라이선스), S14(탭 복제), S15(native messaging)

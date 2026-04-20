@@ -36,14 +36,34 @@
 - [x] 🧪 Canvas vs DOM, Mutation 스코프 가설
 - [x] README/SPEC/USAGE 초안
 
+## 0.5 Phase: 2차 설계 리뷰 ✅ 완료 (R2+ 라운드)
+
+### UX R2 — 온보딩/설정/페이월/마켓
+- [x] 3-step 온보딩, popup UI, App Store subtitle/키워드/i18n
+
+### Debugger R2 — 보안·프라이버시·권한
+- [x] S1~S15 리스크 + 🚨 App Store 심사 블로커 6건 식별
+
+### Performance R2 — 에너지/계측
+- [x] Playwright perf 게이트 + 5지표 + canary + quality mode 3단계
+
+### Test R2 — 릴리스 운영
+- [x] 릴리스 게이트 매트릭스, 초대 20명 비공개 베타, Sentry scrubbing
+
 ## 1. Phase: MVP 구현 (다음 사이클)
 
-### 블로커 해소 필수 (R2 반영)
+### 블로커 해소 필수 (R2 + R2+ 반영)
 - [ ] 🚨 `MinimapRenderer` 인터페이스 계약 확립 (Sev1)
 - [ ] 히스테리시스 구현 (600/550 + 1s 쿨다운)
-- [ ] `PlatformCapabilities` 어댑터
+- [ ] `PlatformCapabilities` 어댑터 (iOS vs macOS 단일 관문)
 - [ ] `config/tuning.ts` 격리
 - [ ] Playwright perf 스모크 + `perf-budget.json` CI 연동
+- [ ] 🚨 Privacy Manifest `PrivacyInfo.xcprivacy` 작성 (S3/S9)
+- [ ] 🚨 `sessionStorage` HMAC 검증 레이어 (S6)
+- [ ] 🚨 Pin URL same-origin 검증 (S6)
+- [ ] 🚨 Private 탭 감지 + 기능 축소 (S12)
+- [ ] 🚨 외부 CDN 금지 + 폰트 번들 내재화 (S13)
+- [ ] 커스텀 검색 패널 (S7 — Cmd+F 가로채기 금지)
 
 ### 핵심 모듈
 - [ ] Safari Web Extension 스캐폴딩 (macOS+iOS 공용)
@@ -78,6 +98,15 @@
 | D4 | Rescan 트리거 | Mutation 단독, 앵커 <1500 + 가상 스크롤 의심 시 IO 보조 |
 | D5 | Progress Trail 구현 | 채택, 단순 1px 라인 (shadowBlur 금지) |
 | D6 | 스크럽 중 smooth scroll | 금지, 즉시 모드 + 종료 시 RAF easing |
+| D7 | 튜토리얼 스킵 vs 강제 | 스킵 허용 (리텐션 보호) |
+| D8 | 14일 trial vs 기능 제한 | 기능 제한 (1인 CS) |
+| D9 | 텔레메트리 off vs opt-out | opt-in + 로컬 링 버퍼 |
+| D10 | activeTab vs `<all_urls>` | `<all_urls>` + optional host 토글 |
+| D11 | sessionStorage vs storage.session | 하이브리드 (HMAC 키는 후자) |
+| D12 | perf 게이트 p50 vs p95 | p95 채택 |
+| D13 | 실기기 vs 합성 | 합성 PR + 주 1회 실기기 canary |
+| D14 | 공개 vs 비공개 베타 | 초대 20명 비공개 |
+| D15 | Sentry vs 자가 엔드포인트 | Sentry + scrubbing |
 
 ## 교차 레이어 변경 로그 🔁
 
@@ -90,3 +119,8 @@
 | Test → Coder | DI `createScanner`, `__TEST__` 이벤트 버스 |
 | UX ↔ Test | 스냅 threshold ±12px 확정 |
 | Reviewer → Architect (R2) | MinimapRenderer 계약, 히스테리시스, PlatformCapabilities, perf-budget.json, tuning.ts |
+| Debugger R2 → UX | 권한 요청 타이밍(맥락 모달), Private 배너, 텔레메트리 opt-in UI |
+| Debugger R2 → Performance | Private 탭 캐시 포기 목록, 링 버퍼 크기 |
+| UX R2 → Coder | 저장 스키마(version/side/margin/proStatus/perSiteOverrides), 권한 S2 시점 요청 |
+| Performance R2 → UX | quality mode 전환은 무고지 + 배지 표시만 |
+| Test R2 → UX | 온보딩 3번째 스텝 옵트인 카드 스펙 |

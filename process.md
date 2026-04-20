@@ -45,6 +45,15 @@
 - `README.md` / `docs/SPEC.md` / `docs/USAGE.md` / `perf-budget.json` / `design.md` v2
 - `Tasklist.md` 업데이트 (과학적 토론 6개, 교차 레이어 7개 기록)
 
+### [07] 2차 설계 리뷰 라운드 (R2+)
+- 팀 4명 병렬 재디스패치 — 각자 1차에서 얕게 다룬 영역 담당
+  - UX: 온보딩·Popup·Pro 페이월·App Store·i18n
+  - Debugger: S1~S15 보안·프라이버시·권한·공급망 — 🚨 App Store 블로커 6건
+  - Performance: 에너지 벤치마크·Playwright 게이트·3단계 quality mode·사이트 프로파일
+  - Test: 릴리스 게이트·비공개 베타 20명·Sentry·킬 스위치
+- 과학적 토론 9건 추가 (D7~D15)
+- 설계 v3 확정 (design.md §12~14)
+
 ### 다음 단계
-- git 초기화 + 베이스라인 커밋
-- MVP 구현 사이클 진입 (🚨 Sev1 해소를 블로커로 배치)
+- design v3 커밋 + GitHub push
+- MVP 구현 사이클 진입 — 블로커 11건 (🚨 Sev1 6건 + R2 5건) 우선 해소
