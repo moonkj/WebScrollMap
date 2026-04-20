@@ -4,7 +4,9 @@
 import { getBrowserApi } from './browserApi';
 import type { Entitlement } from '@core/entitlement';
 
-const NATIVE_APP_ID = 'com.kjmoon.WebScrollMap.Native';
+// Safari Web Extension sendNativeMessage의 applicationIdentifier는
+// containing app의 bundle ID. Apple 문서 기준.
+const NATIVE_APP_ID = 'com.kjmoon.WebScrollMap';
 
 interface NativeApi {
   runtime: {

@@ -92,11 +92,10 @@ api.runtime.onMessage.addListener((raw, _sender, sendResponse) => {
       return true;
     }
     case 'haptic': {
-      // native로 forward (응답 무시, fire-and-forget)
       const nativeApi = api as unknown as {
         runtime: { sendNativeMessage?: (appId: string, msg: unknown) => Promise<unknown> };
       };
-      const NATIVE_APP_ID = 'com.kjmoon.WebScrollMap.Native';
+      const NATIVE_APP_ID = 'com.kjmoon.WebScrollMap';
       if (typeof nativeApi.runtime.sendNativeMessage === 'function') {
         nativeApi.runtime.sendNativeMessage(NATIVE_APP_ID, msg).catch(() => {});
       }
@@ -106,11 +105,10 @@ api.runtime.onMessage.addListener((raw, _sender, sendResponse) => {
     case 'get-entitlement':
     case 'purchase-pro':
     case 'restore-purchases': {
-      // Native host로 직접 전달 (Safari Web Extension: sendNativeMessage)
       const nativeApi = api as unknown as {
         runtime: { sendNativeMessage?: (appId: string, msg: unknown) => Promise<unknown> };
       };
-      const NATIVE_APP_ID = 'com.kjmoon.WebScrollMap.Native';
+      const NATIVE_APP_ID = 'com.kjmoon.WebScrollMap';
       if (typeof nativeApi.runtime.sendNativeMessage === 'function') {
         nativeApi.runtime
           .sendNativeMessage(NATIVE_APP_ID, msg)
