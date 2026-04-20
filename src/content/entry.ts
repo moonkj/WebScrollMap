@@ -51,7 +51,8 @@ async function bootstrap(): Promise<void> {
 
   // Settings → host 스타일 적용 (enabled/side/margin)
   // !important로 호스트 페이지 CSS 승리 보장.
-  const SLIM_WIDTH_PX = 24;
+  // iOS HIG 44pt 터치 타겟. 시각 슬림은 내부 track opacity로 표현.
+  const SLIM_WIDTH_PX = 44;
   function applyPositionStyle() {
     const s = host.host.style;
     s.setProperty('display', settings.enabled ? 'block' : 'none', 'important');

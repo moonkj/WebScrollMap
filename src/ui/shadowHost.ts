@@ -23,15 +23,15 @@ export function mountShadowHost(
   const tag = randomTagName(random);
   const host = doc.createElement(tag);
   host.setAttribute('data-wsm', '1');
-  // Inline style — `!important`로 호스트 페이지 CSS 승리 보장 (iOS Safari 일부 사이트 대응).
-  // all: initial 금지 — display/position 리셋 사고 방지.
+  // Inline style — `!important`로 호스트 페이지 CSS 승리 보장.
+  // 폭은 44px (iOS HIG 터치 타겟 최소치). 시각적 슬림은 내부 track CSS로 표현.
   host.style.cssText = [
     'position: fixed !important',
     'top: 0 !important',
     'right: 0 !important',
     'left: auto !important',
     'bottom: 0 !important',
-    'width: 24px !important', // slim 기본 폭
+    'width: 44px !important',
     'height: 100vh !important',
     'margin: 0 !important',
     'padding: 0 !important',
@@ -40,8 +40,10 @@ export function mountShadowHost(
     'background: transparent !important',
     'display: block !important',
     `z-index: ${zIndex} !important`,
-    'pointer-events: none !important',
-    'transition: width 120ms ease-out, background 120ms ease-out !important',
+    // iOS: touch를 scroll로 해석하지 않도록 none. 스크러빙 제스처를 우리가 직접 처리.
+    'touch-action: none !important',
+    // host 자체는 터치 수신 — 내부 track이 시각만 담당.
+    'pointer-events: auto !important',
   ].join(';');
 
   const root = host.attachShadow({ mode: 'closed' });
@@ -49,13 +51,15 @@ export function mountShadowHost(
   // Shadow 내부 리셋 — 자식에만 적용 (:host에 all: initial 쓰지 말 것).
   const style = doc.createElement('style');
   style.textContent = `
-    :host { pointer-events: none; }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
     .wsm-container { position: absolute; inset: 0; pointer-events: none; }
     .wsm-track {
       position: absolute; top: 0; right: 0; bottom: 0; width: 100%;
       pointer-events: auto;
-      opacity: 0.25;
+      touch-action: none;
+      -webkit-user-select: none; user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      opacity: 0.35;
       transition: opacity 140ms ease-out;
     }
     :host(:hover) .wsm-track,
