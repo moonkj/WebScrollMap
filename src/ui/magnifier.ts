@@ -8,6 +8,7 @@ import { paletteFor } from './palette';
 export interface MagnifierApi {
   show(clientY: number, docY: number, result: ScannerResult | null): void;
   hide(): void;
+  setSide(side: 'left' | 'right'): void;
   destroy(): void;
 }
 
@@ -52,8 +53,9 @@ function nearestAnchor(docY: number, anchors: ReadonlyArray<AnchorPoint>): Ancho
 export function createMagnifier(
   root: ShadowRoot,
   scheme: 'light' | 'dark',
-  side: 'left' | 'right',
+  initialSide: 'left' | 'right',
 ): MagnifierApi {
+  let side = initialSide;
   const doc = root.ownerDocument ?? document;
   const palette = paletteFor(scheme);
 
@@ -95,20 +97,25 @@ export function createMagnifier(
   return {
     show(clientY, docY, result) {
       place(clientY);
-      let label = `${Math.round(docY)}px`;
-      if (result) {
-        const a = nearestAnchor(docY, result.anchors);
-        if (a) {
-          const kindTxt = labelFor(a.type);
-          // snippet 있으면 실제 제목 표시, 없으면 kind · px
-          label = a.snippet ? `${kindTxt} · ${a.snippet}` : `${kindTxt} · ${label}`;
-        }
+      // px 숫자는 숨김 (사용자 피드백). 앵커 근처에 헤딩/스트롱이 있을 때만 표시.
+      if (!result) {
+        el.style.opacity = '0';
+        return;
       }
-      el.textContent = label;
+      const a = nearestAnchor(docY, result.anchors);
+      if (!a || !a.snippet) {
+        el.style.opacity = '0';
+        return;
+      }
+      const kindTxt = labelFor(a.type);
+      el.textContent = kindTxt ? `${kindTxt} · ${a.snippet}` : a.snippet;
       el.style.opacity = '1';
     },
     hide() {
       el.style.opacity = '0';
+    },
+    setSide(next) {
+      side = next;
     },
     destroy() {
       el.remove();

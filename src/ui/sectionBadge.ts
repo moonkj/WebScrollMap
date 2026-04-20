@@ -8,6 +8,7 @@ export interface SectionBadgeApi {
   show(): void;
   hide(): void;
   update(scrollY: number, anchors: ReadonlyArray<AnchorPoint>): void;
+  setSide(side: 'left' | 'right'): void;
   destroy(): void;
 }
 
@@ -30,18 +31,21 @@ function isHeading(kind: AnchorKind): boolean {
 
 export function createSectionBadge(
   root: ShadowRoot,
-  side: 'left' | 'right',
+  initialSide: 'left' | 'right',
 ): SectionBadgeApi & Disposable {
   const doc = root.ownerDocument ?? document;
   const el = doc.createElement('div');
   el.className = 'wsm-section-badge';
-  if (side === 'right') {
-    el.style.right = '56px';
-    el.style.left = '';
-  } else {
-    el.style.left = '56px';
-    el.style.right = '';
+  function applySide(side: 'left' | 'right') {
+    if (side === 'right') {
+      el.style.right = '56px';
+      el.style.left = '';
+    } else {
+      el.style.left = '56px';
+      el.style.right = '';
+    }
   }
+  applySide(initialSide);
   root.appendChild(el);
 
   let lastText = '';
@@ -76,6 +80,9 @@ export function createSectionBadge(
         return;
       }
       el.textContent = text;
+    },
+    setSide(next) {
+      applySide(next);
     },
     destroy() {
       el.remove();

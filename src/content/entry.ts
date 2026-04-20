@@ -26,7 +26,25 @@ import { applyOverride, bumpStatsForTier, loadAdminConfig } from '@core/adminCon
 import { applySmartFilter } from '@core/smartFilter';
 import { shouldActivate } from './shouldActivate';
 import { TUNING } from '@config/tuning';
-import type { ContainerTarget, Disposable, ViewportRect } from '@core/types';
+import { AnchorKind, type ContainerTarget, type Disposable, type ViewportRect, type AnchorPoint } from '@core/types';
+
+/** 주어진 doc Y 위로 가장 가까운 heading snippet을 반환. 없으면 undefined. */
+function findNearestHeadingLabel(docY: number, anchors: ReadonlyArray<AnchorPoint>): string | undefined {
+  let best: AnchorPoint | null = null;
+  for (const a of anchors) {
+    if (a.y > docY + 20) break;
+    if (!a.snippet) continue;
+    if (
+      a.type === AnchorKind.Heading1 ||
+      a.type === AnchorKind.Heading2 ||
+      a.type === AnchorKind.Heading3 ||
+      a.type === AnchorKind.StrongText
+    ) {
+      best = a;
+    }
+  }
+  return best?.snippet;
+}
 
 const WSM_Z_INDEX = 2_147_483_000;
 const TRAIL_SAMPLE_MS = 250;
@@ -279,11 +297,13 @@ async function bootstrap(): Promise<void> {
         return;
       }
       const currentScroll = container.getScrollY();
-      const added = pinStore.add({ y: currentScroll });
+      // 현재 스크롤 위치 근처의 heading snippet을 label로 저장 → 핀 리스트에 제목 표시
+      const label = findNearestHeadingLabel(currentScroll + container.getHeight() / 2, lastResult.anchors);
+      const added = pinStore.add(label ? { y: currentScroll, label } : { y: currentScroll });
       if (added) {
         renderer.setPins(pinStore.list());
         floatingPins.update(pinStore.list(), container.getDocHeight());
-        playHaptic('pin'); // Pro 햅틱 (native 연결 시)
+        playHaptic('pin');
       }
     },
     onStateChange: (state) => {
@@ -400,8 +420,10 @@ async function bootstrap(): Promise<void> {
       case 'settings-changed': {
         settings = applyTierConstraints(tier, msg.settings);
         applyPositionStyle();
-        // side 변경 시 renderer edge도 업데이트 (왼/오른쪽 양쪽 바 버그 해소)
+        // side 변경 시 모든 side-aware UI 업데이트 (매그니파이/섹션 배지/플로팅 패널 방향)
         renderer.setSide(settings.side);
+        magnifier.setSide(settings.side);
+        sectionBadge.setSide(settings.side);
         floatingPins.setSide(settings.side);
         floatingPins.setOpacity(settings.floatingOpacity);
         renderer.setPalette(paletteForTheme(colorScheme, settings.theme));
@@ -444,6 +466,7 @@ async function bootstrap(): Promise<void> {
           y: p.y,
           pct: Math.round((p.y / docH) * 100),
           ...(p.color ? { color: p.color } : {}),
+          ...(p.label ? { label: p.label } : {}),
         }));
         sendResponse({ ok: true, pins } satisfies WsmResponse);
         return false;

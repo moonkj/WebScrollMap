@@ -270,7 +270,12 @@ export function createFloatingPins(root: ShadowRoot, opts: FloatingPinsOpts): Fl
       const info = doc.createElement('span');
       info.style.cssText = 'flex:1;font-variant-numeric:tabular-nums;font-size:12px;min-width:0;';
       const pct = Math.round((p.y / cap) * 100);
-      info.textContent = `#${i + 1} · ${pct}%`;
+      // label(핀 찍힐 당시 heading snippet)이 있으면 우선 표시, 없으면 pct fallback.
+      const suffix = p.label && p.label.length > 0 ? p.label : `${pct}%`;
+      info.textContent = `#${i + 1} · ${suffix}`;
+      info.style.overflow = 'hidden';
+      info.style.textOverflow = 'ellipsis';
+      info.style.whiteSpace = 'nowrap';
 
       const del = doc.createElement('button');
       del.type = 'button';
@@ -320,12 +325,21 @@ export function createFloatingPins(root: ShadowRoot, opts: FloatingPinsOpts): Fl
     bubble.textContent = `📍 ${count}`;
   }
 
+  // display를 !important로 강제 — 패널/버블이 동시에 보이는 버그 방지
   function applyMinimized() {
-    panel.style.display = minimized ? 'none' : 'flex';
-    bubble.style.display = minimized ? 'flex' : 'none';
+    if (minimized) {
+      panel.style.setProperty('display', 'none', 'important');
+      bubble.style.setProperty('display', 'flex', 'important');
+    } else {
+      panel.style.setProperty('display', 'flex', 'important');
+      bubble.style.setProperty('display', 'none', 'important');
+    }
   }
 
-  minBtn.addEventListener('click', () => {
+  // 최소화 버튼: pointerdown 전파 차단 (header 드래그와의 충돌 방지)
+  minBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
+  minBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
     minimized = true;
     applyMinimized();
   });

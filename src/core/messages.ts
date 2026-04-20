@@ -42,6 +42,8 @@ export interface PinSummary {
   y: number;
   pct: number; // 0..100 (y / docHeight)
   color?: string;
+  /** 핀 찍힐 당시 근처 heading snippet (있으면) */
+  label?: string;
 }
 
 import type { Entitlement, Tier } from './entitlement';

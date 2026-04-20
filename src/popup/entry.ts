@@ -208,7 +208,8 @@ function renderPins(pins: ReadonlyArray<PinSummary>, refresh: () => Promise<void
 
     const info = document.createElement('span');
     info.className = 'wsm-pin-info';
-    info.textContent = `#${i + 1} · ${p.pct}%`;
+    const suffix = p.label && p.label.length > 0 ? p.label : `${p.pct}%`;
+    info.textContent = `#${i + 1} · ${suffix}`;
 
     const del = document.createElement('button');
     del.type = 'button';
