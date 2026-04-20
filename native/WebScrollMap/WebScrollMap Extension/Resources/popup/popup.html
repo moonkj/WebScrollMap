@@ -8,9 +8,20 @@
   </head>
   <body>
     <header class="wsm-head">
-      <h1 class="wsm-title" data-i18n="appName">WebScrollMap</h1>
+      <div class="wsm-title-row">
+        <h1 class="wsm-title" data-i18n="appName">WebScrollMap</h1>
+        <span class="wsm-tier-badge" id="tier-badge">FREE</span>
+      </div>
       <div class="wsm-status" id="status" aria-live="polite"></div>
     </header>
+
+    <section class="wsm-upgrade" id="upgrade-banner" hidden>
+      <div class="wsm-upgrade-text">
+        <strong data-i18n="upgradeTitle">Unlock all features</strong>
+        <small data-i18n="upgradeSubtitle">Pin Drop · Search · Trail · Theme · $0.99 one-time</small>
+      </div>
+      <button type="button" class="wsm-upgrade-btn" id="upgrade-btn" data-i18n="upgradeCTA">Upgrade</button>
+    </section>
 
     <section class="wsm-row">
       <label class="wsm-switch">
@@ -20,36 +31,81 @@
       </label>
     </section>
 
-    <section class="wsm-row">
-      <div class="wsm-label" data-i18n="side">Side</div>
-      <div class="wsm-seg" role="radiogroup" aria-labelledby="side">
+    <section class="wsm-row wsm-pro" data-pro="right-side">
+      <div class="wsm-label">
+        <span data-i18n="side">Side</span><span class="wsm-lock" aria-hidden="true">🔒</span>
+      </div>
+      <div class="wsm-seg" role="radiogroup" aria-label="Side">
         <button type="button" data-side="left" data-i18n="sideLeft">Left</button>
         <button type="button" data-side="right" data-i18n="sideRight">Right</button>
       </div>
     </section>
 
-    <section class="wsm-row">
-      <div class="wsm-label" data-i18n="margin">Margin</div>
-      <div class="wsm-seg" role="radiogroup" aria-labelledby="margin">
+    <section class="wsm-row wsm-pro" data-pro="margin-custom">
+      <div class="wsm-label">
+        <span data-i18n="margin">Margin</span><span class="wsm-lock" aria-hidden="true">🔒</span>
+      </div>
+      <div class="wsm-seg" role="radiogroup" aria-label="Margin">
         <button type="button" data-margin="0">0</button>
+        <button type="button" data-margin="8">8</button>
         <button type="button" data-margin="16">16</button>
         <button type="button" data-margin="24">24</button>
+        <button type="button" data-margin="32">32</button>
       </div>
     </section>
 
-    <section class="wsm-row">
-      <div class="wsm-label" data-i18n="floatingOpacity">Pin pad</div>
-      <div class="wsm-seg" role="radiogroup" aria-labelledby="floatingOpacity">
+    <section class="wsm-row wsm-pro" data-pro="bar-width">
+      <div class="wsm-label">
+        <span data-i18n="barWidth">Bar width</span><span class="wsm-lock" aria-hidden="true">🔒</span>
+      </div>
+      <div class="wsm-seg" role="radiogroup" aria-label="Bar width">
+        <button type="button" data-barwidth="3">3</button>
+        <button type="button" data-barwidth="6">6</button>
+        <button type="button" data-barwidth="12">12</button>
+      </div>
+    </section>
+
+    <section class="wsm-row wsm-pro" data-pro="opacity">
+      <div class="wsm-label">
+        <span data-i18n="floatingOpacity">Pin pad</span><span class="wsm-lock" aria-hidden="true">🔒</span>
+      </div>
+      <div class="wsm-seg" role="radiogroup" aria-label="Pin pad opacity">
         <button type="button" data-opacity="40">40%</button>
         <button type="button" data-opacity="70">70%</button>
         <button type="button" data-opacity="100">100%</button>
       </div>
     </section>
 
-    <section class="wsm-row wsm-pins-section">
-      <div class="wsm-label" data-i18n="pinsLabel">Pins</div>
+    <section class="wsm-row wsm-pro" data-pro="smart-filter">
+      <div class="wsm-label">
+        <span data-i18n="smartFilter">Show</span><span class="wsm-lock" aria-hidden="true">🔒</span>
+      </div>
+      <div class="wsm-seg" role="radiogroup" aria-label="Smart filter">
+        <button type="button" data-filter="all" data-i18n="filterAll">All</button>
+        <button type="button" data-filter="headings" data-i18n="filterHeadings">Headings</button>
+        <button type="button" data-filter="media" data-i18n="filterMedia">Media</button>
+      </div>
+    </section>
+
+    <section class="wsm-row wsm-pro" data-pro="theme">
+      <div class="wsm-label">
+        <span data-i18n="theme">Theme</span><span class="wsm-lock" aria-hidden="true">🔒</span>
+      </div>
+      <div class="wsm-theme-row">
+        <button type="button" data-theme="default" class="wsm-theme-card" data-color="#f97316">●</button>
+        <button type="button" data-theme="sunset" class="wsm-theme-card" data-color="#fb7185">●</button>
+        <button type="button" data-theme="ocean" class="wsm-theme-card" data-color="#38bdf8">●</button>
+        <button type="button" data-theme="forest" class="wsm-theme-card" data-color="#4ade80">●</button>
+        <button type="button" data-theme="mono" class="wsm-theme-card" data-color="#94a3b8">●</button>
+      </div>
+    </section>
+
+    <section class="wsm-row wsm-pins-section wsm-pro" data-pro="pin-drop">
+      <div class="wsm-label">
+        <span data-i18n="pinsLabel">Pins</span><span class="wsm-lock" aria-hidden="true">🔒</span>
+      </div>
       <ul class="wsm-pins" id="pins-list"></ul>
-      <div class="wsm-empty" id="pins-empty" data-i18n="pinsEmpty">No pins yet — long-press the bar to save current position</div>
+      <div class="wsm-empty" id="pins-empty" data-i18n="pinsEmpty">No pins yet — long-press the bar to save current view</div>
     </section>
 
     <section class="wsm-row wsm-actions">
@@ -58,7 +114,8 @@
     </section>
 
     <footer class="wsm-foot">
-      <span class="wsm-hint" data-i18n="helpHint">Long-press bar to bookmark current view · Tap pin to return · Double-tap for search</span>
+      <span class="wsm-hint" data-i18n="helpHint">Long-press bar = bookmark current view · Tap pin = return · Double-tap = search</span>
+      <button type="button" class="wsm-link-btn" id="restore-btn" data-i18n="restorePurchases">Restore purchases</button>
     </footer>
 
     <script src="/dist/popup.js"></script>

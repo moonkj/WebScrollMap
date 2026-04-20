@@ -9,7 +9,10 @@ export interface Palette {
   trail: string;
   searchGlow: string;
   pin: string;
+  [key: string]: string;
 }
+
+export type ThemeName = 'default' | 'sunset' | 'ocean' | 'forest' | 'mono';
 
 export function paletteFor(scheme: 'light' | 'dark'): Palette {
   if (scheme === 'dark') {
@@ -38,4 +41,43 @@ export function paletteFor(scheme: 'light' | 'dark'): Palette {
     searchGlow: 'rgba(8,145,178,0.85)',
     pin: 'rgba(249,115,22,1)', // 오렌지 500
   };
+}
+
+// Pro 테마: 기존 default 팔레트 위에 accent 색상만 덮어쓴 변형.
+// light/dark 모두 유효하도록 scheme 인자 받음.
+export function paletteForTheme(scheme: 'light' | 'dark', theme: ThemeName): Palette {
+  const base = paletteFor(scheme);
+  if (theme === 'default') return base;
+  switch (theme) {
+    case 'sunset':
+      return {
+        ...base,
+        indicator: scheme === 'dark' ? 'rgba(251,113,133,0.32)' : 'rgba(239,68,68,0.18)',
+        pin: 'rgba(251,113,133,1)',
+        searchGlow: 'rgba(251,146,60,0.9)',
+      };
+    case 'ocean':
+      return {
+        ...base,
+        indicator: scheme === 'dark' ? 'rgba(56,189,248,0.3)' : 'rgba(2,132,199,0.18)',
+        pin: 'rgba(56,189,248,1)',
+        searchGlow: 'rgba(34,211,238,0.9)',
+      };
+    case 'forest':
+      return {
+        ...base,
+        indicator: scheme === 'dark' ? 'rgba(134,239,172,0.28)' : 'rgba(22,163,74,0.2)',
+        pin: 'rgba(74,222,128,1)',
+        searchGlow: 'rgba(134,239,172,0.9)',
+      };
+    case 'mono':
+      return {
+        ...base,
+        indicator: scheme === 'dark' ? 'rgba(255,255,255,0.22)' : 'rgba(15,23,42,0.18)',
+        pin: scheme === 'dark' ? 'rgba(229,231,235,1)' : 'rgba(15,23,42,1)',
+        searchGlow: scheme === 'dark' ? 'rgba(229,231,235,0.9)' : 'rgba(71,85,105,0.9)',
+      };
+    default:
+      return base;
+  }
 }

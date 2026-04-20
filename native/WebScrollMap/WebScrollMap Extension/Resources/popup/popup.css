@@ -217,3 +217,113 @@ body {
 .wsm-empty.wsm-visible {
   display: block;
 }
+
+/* Tier badge */
+.wsm-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.wsm-tier-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: var(--border);
+  color: var(--muted);
+}
+.wsm-tier-badge.pro {
+  background: linear-gradient(90deg, #f97316, #fb7185);
+  color: #fff;
+}
+
+/* Upgrade banner */
+.wsm-upgrade {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  margin: 8px 0;
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(249,115,22,0.12), rgba(251,113,133,0.12));
+  border: 1px solid rgba(249,115,22,0.3);
+}
+.wsm-upgrade-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.wsm-upgrade-text strong {
+  font-size: 12px;
+  color: var(--fg);
+}
+.wsm-upgrade-text small {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+.wsm-upgrade-btn {
+  appearance: none;
+  background: linear-gradient(90deg, #f97316, #fb7185);
+  color: #fff;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font: 600 12px -apple-system, system-ui, sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(249,115,22,0.35);
+}
+
+/* Pro lock UX */
+.wsm-pro.wsm-locked {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.wsm-pro.wsm-locked .wsm-lock { display: inline; margin-left: 4px; font-size: 10px; }
+.wsm-lock { display: none; }
+
+/* Theme cards */
+.wsm-theme-row {
+  display: inline-flex;
+  gap: 6px;
+}
+.wsm-theme-card {
+  appearance: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: transparent;
+  color: var(--color, #f97316);
+  font-size: 16px;
+  line-height: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.wsm-theme-card[aria-pressed='true'] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+/* Restore link */
+.wsm-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.wsm-link-btn {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: var(--accent);
+  font: 11px -apple-system, system-ui, sans-serif;
+  cursor: pointer;
+  text-align: left;
+  padding: 2px 0;
+  text-decoration: underline;
+}

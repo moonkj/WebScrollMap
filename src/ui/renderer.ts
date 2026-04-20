@@ -76,6 +76,9 @@ export function createRenderer(root: ShadowRoot, opts: RendererOptions): HybridR
       lastHits = hits;
       inner?.setSearchHits(hits);
     },
+    setPalette(p) {
+      inner?.setPalette(p);
+    },
     destroy() {
       inner?.destroy();
       inner = null;

@@ -2,12 +2,17 @@
 // browser.runtime.sendMessage 기반, TypeScript discriminated union.
 
 export type FloatingOpacity = 40 | 70 | 100;
+export type SmartFilter = 'all' | 'headings' | 'media';
+export type ThemeName = 'default' | 'sunset' | 'ocean' | 'forest' | 'mono';
 
 export interface Settings {
   enabled: boolean;
   side: 'left' | 'right';
-  marginPx: 0 | 16 | 24;
+  marginPx: 0 | 8 | 16 | 24 | 32;
+  barWidthPx: 3 | 6 | 12;
   floatingOpacity: FloatingOpacity;
+  smartFilter: SmartFilter;
+  theme: ThemeName;
   telemetryOptIn: boolean;
   onboardingCompleted: boolean;
 }
@@ -16,7 +21,10 @@ export const DEFAULT_SETTINGS: Settings = {
   enabled: true,
   side: 'right',
   marginPx: 16,
+  barWidthPx: 6,
   floatingOpacity: 100,
+  smartFilter: 'all',
+  theme: 'default',
   telemetryOptIn: false,
   onboardingCompleted: false,
 };
@@ -36,6 +44,8 @@ export interface PinSummary {
   color?: string;
 }
 
+import type { Entitlement, Tier } from './entitlement';
+
 export type WsmMessage =
   | { type: 'get-settings' }
   | { type: 'set-settings'; settings: Partial<Settings> }
@@ -46,10 +56,23 @@ export type WsmMessage =
   | { type: 'get-pins' }
   | { type: 'jump-to-pin'; pinId: string }
   | { type: 'delete-pin'; pinId: string }
+  | { type: 'get-entitlement' }
+  | { type: 'purchase-pro' }
+  | { type: 'restore-purchases' }
+  | { type: 'entitlement-changed'; entitlement: Entitlement | null; tier: Tier }
+  | { type: 'haptic'; kind: 'snap' | 'pin' | 'edge' }
+  | { type: 'telemetry-flush' }
   | { type: 'ping' };
 
 export type WsmResponse =
-  | { ok: true; settings?: Settings; status?: PageStatus; pins?: PinSummary[] }
+  | {
+      ok: true;
+      settings?: Settings;
+      status?: PageStatus;
+      pins?: PinSummary[];
+      entitlement?: Entitlement | null;
+      tier?: Tier;
+    }
   | { ok: false; error: string };
 
 export function isWsmMessage(x: unknown): x is WsmMessage {

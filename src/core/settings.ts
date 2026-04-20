@@ -9,11 +9,18 @@ const KEY = 'wsm:settings:v1';
 function sanitize(raw: unknown): Settings {
   const src = (raw && typeof raw === 'object' ? raw : {}) as Partial<Settings>;
   const opacity = src.floatingOpacity === 40 || src.floatingOpacity === 70 ? src.floatingOpacity : 100;
+  const margin = [0, 8, 16, 24, 32].includes(src.marginPx as number) ? (src.marginPx as Settings['marginPx']) : 16;
+  const barW = [3, 6, 12].includes(src.barWidthPx as number) ? (src.barWidthPx as Settings['barWidthPx']) : 6;
+  const filter = ['all', 'headings', 'media'].includes(src.smartFilter as string) ? (src.smartFilter as Settings['smartFilter']) : 'all';
+  const theme = ['default', 'sunset', 'ocean', 'forest', 'mono'].includes(src.theme as string) ? (src.theme as Settings['theme']) : 'default';
   return {
     enabled: typeof src.enabled === 'boolean' ? src.enabled : DEFAULT_SETTINGS.enabled,
     side: src.side === 'left' ? 'left' : 'right',
-    marginPx: src.marginPx === 0 || src.marginPx === 24 ? src.marginPx : 16,
+    marginPx: margin,
+    barWidthPx: barW,
     floatingOpacity: opacity,
+    smartFilter: filter,
+    theme: theme,
     telemetryOptIn: typeof src.telemetryOptIn === 'boolean' ? src.telemetryOptIn : false,
     onboardingCompleted:
       typeof src.onboardingCompleted === 'boolean' ? src.onboardingCompleted : false,

@@ -33,8 +33,12 @@ export function createDomRenderer(root: ShadowRoot, opts: RendererOptions): Mini
   glowLayer.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;';
   container.appendChild(glowLayer);
 
-  let palette: Palette = paletteFor(opts.colorScheme);
+  let palette: Palette = { ...paletteFor(opts.colorScheme), ...(opts.palette ?? {}) } as Palette;
   let docHeight = 1;
+  let lastResult: ScannerResult | null = null;
+  let lastPins: ReadonlyArray<Pin> = [];
+  let lastTrail: ReadonlyArray<TrailSegment> = [];
+  let lastHits: ReadonlyArray<SearchHitMark> = [];
   const isRight = opts.side === 'right';
 
   function applyPalette() {
@@ -74,6 +78,7 @@ export function createDomRenderer(root: ShadowRoot, opts: RendererOptions): Mini
       root.appendChild(container);
     },
     update(result) {
+      lastResult = result;
       renderAnchors(result);
     },
     highlight(_state: MinimapState, viewport: ViewportRect) {
@@ -87,6 +92,7 @@ export function createDomRenderer(root: ShadowRoot, opts: RendererOptions): Mini
       container.setAttribute('aria-valuemax', '100');
     },
     setPins(pins: ReadonlyArray<Pin>) {
+      lastPins = pins;
       pinsLayer.textContent = '';
       for (const p of pins) {
         const el = doc.createElement('div');
@@ -111,6 +117,7 @@ export function createDomRenderer(root: ShadowRoot, opts: RendererOptions): Mini
       }
     },
     setTrail(segs: ReadonlyArray<TrailSegment>) {
+      lastTrail = segs;
       trailLayer.textContent = '';
       for (const s of segs) {
         const top = (s.yStart / (docHeight || 1)) * 100;
@@ -121,6 +128,7 @@ export function createDomRenderer(root: ShadowRoot, opts: RendererOptions): Mini
       }
     },
     setSearchHits(hits: ReadonlyArray<SearchHitMark>) {
+      lastHits = hits;
       glowLayer.textContent = '';
       for (const h of hits) {
         const top = (h.y / (docHeight || 1)) * 100;
@@ -128,6 +136,16 @@ export function createDomRenderer(root: ShadowRoot, opts: RendererOptions): Mini
         dot.style.cssText = `position:absolute;top:${top.toFixed(3)}%;left:62%;width:32%;height:3px;background:${palette.searchGlow};border-radius:2px;`;
         glowLayer.appendChild(dot);
       }
+    },
+    setPalette(p) {
+      palette = { ...palette, ...p } as Palette;
+      applyPalette();
+      if (lastResult) renderAnchors(lastResult);
+      // Pins/Trail/Hits 재렌더 (setter 재호출로 palette 반영)
+      const ps = lastPins; const ts = lastTrail; const hs = lastHits;
+      (this as unknown as { setPins(x: unknown): void; setTrail(x: unknown): void; setSearchHits(x: unknown): void; }).setPins(ps);
+      (this as unknown as { setTrail(x: unknown): void; }).setTrail(ts);
+      (this as unknown as { setSearchHits(x: unknown): void; }).setSearchHits(hs);
     },
     destroy() {
       container.remove();

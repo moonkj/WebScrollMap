@@ -1,5 +1,52 @@
 # WebScrollMap — Tasklist
 
+## Phase 6: Free/Pro Tier + 잔여 로드맵 전부 구현 ✅
+
+### Batch 1: Entitlement core
+- [x] `core/entitlement.ts` — HMAC 서명, device binding, 14일 grace
+- [x] `core/messages.ts` — IAP 메시지 프로토콜 확장
+- [x] `platform/iapBridge.ts` — sendNativeMessage fire-and-forget
+
+### Batch 2: Feature gating
+- [x] `core/featureGate.ts` — 16개 Pro 기능 정의, tier 제약 함수
+- [x] `ui/upgradeToast.ts` — 잠김 시 하단 토스트 2.4s
+
+### Batch 3: Pro 신규 기능
+- [x] `ui/palette.ts` — Theme Store (default/sunset/ocean/forest/mono)
+- [x] `core/smartFilter.ts` — all/headings/media
+- [x] `core/telemetrySender.ts` — 30s idle batch POST
+- [x] renderer `setPalette` 동적 테마 교체
+- [x] CoreHaptics fire-and-forget
+
+### Batch 4: Native Swift app
+- [x] `SafariWebExtensionHandler.swift` — StoreKit 2 + CoreHaptics
+  - EntitlementManager (djb2 HMAC 매칭, UserDefaults deviceId)
+  - HapticsManager (CHHapticEngine)
+  - 4 메시지 타입 핸들링
+
+### Batch 5: Popup UI
+- [x] Tier 뱃지 (FREE/PRO)
+- [x] Upgrade 배너 (grad 오렌지)
+- [x] 5개 테마 카드
+- [x] margin 5단계 / barWidth 3단계 / filter 3단계
+- [x] 핀 리스트 Pro gate
+- [x] Restore purchases 하단 링크
+- [x] i18n (ko/en/ja) 10개 키 추가
+
+### Batch 6: Tests
+- [x] `entitlement.test.ts` — 6건 (free/pro/grace/device/tamper/null)
+- [x] `featureGate.test.ts` — 5건 (block/allow/constraints/message)
+- [x] `smartFilter.test.ts` — 3건 (all/headings/media)
+- [x] 총 83/83 passing
+
+### Batch 7: Apple 심사 준비
+- [x] `docs/PRO_TIER.md` — 기능 차이 명세 + 체크리스트 7건 + 테스트 시나리오
+- [x] `docs/SPEC.md` 섹션 15까지 확장
+- [ ] App Store Connect 제품 등록 `com.kjmoon.WebScrollMap.Pro` ($0.99)
+- [ ] Privacy Manifest에 InAppPurchase 선언
+- [ ] StoreKit .storekit 로컬 테스트 구성
+
+
 > 팀 리더(Architect) + Teammate 1~4가 **동일 파일**을 갱신한다. 체크박스는 각자 자기 작업분 업데이트.
 > 과학적 토론 발생은 🧪, 교차 레이어 영향은 🔁, 블로커는 🚨 태깅.
 

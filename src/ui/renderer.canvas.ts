@@ -21,7 +21,7 @@ export function createCanvasRenderer(root: ShadowRoot, opts: RendererOptions): M
   const canvas = doc.createElement('canvas');
   canvas.className = 'wsm-track';
   canvas.style.cssText = `width: ${opts.width}px; height: 100%;`;
-  let palette: Palette = paletteFor(opts.colorScheme);
+  let palette: Palette = { ...paletteFor(opts.colorScheme), ...(opts.palette ?? {}) } as Palette;
   let lastResult: ScannerResult | null = null;
   let lastPins: ReadonlyArray<Pin> = [];
   let lastTrail: ReadonlyArray<TrailSegment> = [];
@@ -166,6 +166,10 @@ export function createCanvasRenderer(root: ShadowRoot, opts: RendererOptions): M
     },
     setSearchHits(hits) {
       lastHits = hits;
+      if (lastResult) drawAll(lastState, lastViewport);
+    },
+    setPalette(p) {
+      palette = { ...palette, ...p } as Palette;
       if (lastResult) drawAll(lastState, lastViewport);
     },
     destroy() {

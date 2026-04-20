@@ -6,17 +6,23 @@ import { createMagnifier } from '@ui/magnifier';
 import { createSearchPanel } from '@ui/searchPanel';
 import { createSectionBadge } from '@ui/sectionBadge';
 import { createFloatingPins } from '@ui/floatingPins';
+import { createUpgradeToast } from '@ui/upgradeToast';
 import { buildSearchIndex, searchIndex, type SearchIndexEntry } from '@core/searchIndex';
 import { createObserverBus } from '@platform/observerBus';
 import { detectScrollContainer, elementTarget } from '@platform/container';
 import { createManualPicker } from '@platform/manualPicker';
 import { detectTheme } from '@ui/theme';
+import { paletteForTheme } from '@ui/palette';
 import { createSignedStorage } from '@core/storage';
 import { createPinStore } from '@core/pins';
 import { createTrailStore } from '@core/trail';
 import { loadSettings } from '@core/settings';
 import { getBrowserApi } from '@platform/browserApi';
+import { fetchEntitlement, playHaptic } from '@platform/iapBridge';
 import { isWsmMessage, type PageStatus, type PinSummary, type Settings, type WsmMessage, type WsmResponse } from '@core/messages';
+import { verifyEntitlement, type Entitlement, type Tier } from '@core/entitlement';
+import { applyTierConstraints, isFeatureAvailable, lockToastMessage } from '@core/featureGate';
+import { applySmartFilter } from '@core/smartFilter';
 import { shouldActivate } from './shouldActivate';
 import { TUNING } from '@config/tuning';
 import type { ContainerTarget, Disposable, ViewportRect } from '@core/types';
@@ -35,6 +41,33 @@ async function bootstrap(): Promise<void> {
 
   const browserApi = getBrowserApi();
   let settings: Settings = await loadSettings(browserApi.storage.local);
+
+  // Entitlement 로드 (native 연결 안 되면 free). Device ID는 storage.local에 고정 저장.
+  const DEVICE_KEY = 'wsm:device-id:v1';
+  let deviceId: string;
+  try {
+    const rec = await browserApi.storage.local.get(DEVICE_KEY);
+    const existing = rec[DEVICE_KEY] as string | undefined;
+    if (existing) deviceId = existing;
+    else {
+      deviceId = Math.random().toString(36).slice(2) + '-' + Date.now().toString(36);
+      await browserApi.storage.local.set({ [DEVICE_KEY]: deviceId });
+    }
+  } catch {
+    deviceId = 'anon';
+  }
+
+  let entitlement: Entitlement | null = null;
+  let tier: Tier = 'free';
+  try {
+    entitlement = await fetchEntitlement();
+    tier = verifyEntitlement(entitlement, Date.now(), deviceId);
+  } catch {
+    tier = 'free';
+  }
+
+  // Free tier는 settings 강제 제약 (우측/큰 여백/테마/필터 모두 차단)
+  settings = applyTierConstraints(tier, settings);
 
   const deps: ScannerDeps = {
     now: () => performance.now(),
@@ -78,6 +111,7 @@ async function bootstrap(): Promise<void> {
     dpr: window.devicePixelRatio || 1,
     colorScheme,
     side: settings.side,
+    palette: paletteForTheme(colorScheme, settings.theme),
     onPinTap: (pin) => {
       // 핀 탭 → 저장된 정확한 스크롤 위치로 복귀 (오프셋 없음)
       container.setScrollY(pin.y);
@@ -85,8 +119,14 @@ async function bootstrap(): Promise<void> {
   });
   renderer.mount();
 
+  // Pro 기능 UI는 항상 mount (tier 변경 시 즉시 반응). 실제 노출은 tier gate.
   const magnifier = createMagnifier(host.root, colorScheme, settings.side);
   const sectionBadge = createSectionBadge(host.root, settings.side);
+  const upgradeToast = createUpgradeToast(host.root, colorScheme);
+
+  function showLock(feature: Parameters<typeof lockToastMessage>[0]) {
+    upgradeToast.show(lockToastMessage(feature));
+  }
 
   // 검색 인덱스는 최초 스캔 시점에 지연 빌드.
   let searchCache: ReadonlyArray<SearchIndexEntry> | null = null;
@@ -126,11 +166,21 @@ async function bootstrap(): Promise<void> {
     return container.kind === 'element' && container.el ? container.el : document.body;
   }
 
-  let lastResult = scanner.scan(currentScanRoot());
+  function scanWithFilter(): import('@core/types').ScannerResult {
+    const raw = scanner.scan(currentScanRoot());
+    if (!isFeatureAvailable(tier, 'smart-filter') || settings.smartFilter === 'all') return raw;
+    return {
+      ...raw,
+      anchors: applySmartFilter(raw.anchors, settings.smartFilter) as typeof raw.anchors,
+    };
+  }
+
+  let lastResult = scanWithFilter();
   renderer.update(lastResult);
-  renderer.setPins(pinStore.list());
-  renderer.setTrail(trailStore.list());
-  floatingPins.update(pinStore.list(), container.getDocHeight());
+  if (isFeatureAvailable(tier, 'pin-jump')) renderer.setPins(pinStore.list());
+  if (isFeatureAvailable(tier, 'trail')) renderer.setTrail(trailStore.list());
+  if (isFeatureAvailable(tier, 'floating-panel'))
+    floatingPins.update(pinStore.list(), container.getDocHeight());
 
   const vp = (): ViewportRect => ({
     scrollY: container.getScrollY(),
@@ -148,6 +198,7 @@ async function bootstrap(): Promise<void> {
   let badgeHideTimer: ReturnType<typeof setTimeout> | null = null;
 
   function sampleTrail() {
+    if (!isFeatureAvailable(tier, 'trail')) return;
     const nowMs = performance.now();
     if (nowMs - lastTrailSampleAt < TRAIL_SAMPLE_MS) return;
     lastTrailSampleAt = nowMs;
@@ -164,7 +215,9 @@ async function bootstrap(): Promise<void> {
     requestAnimationFrame(() => {
       renderer.highlight('slim', vp());
       sampleTrail();
-      sectionBadge.update(container.getScrollY(), lastResult.anchors);
+      if (isFeatureAvailable(tier, 'section-badge')) {
+        sectionBadge.update(container.getScrollY(), lastResult.anchors);
+      }
       scrollTicking = false;
     });
   }
@@ -191,14 +244,16 @@ async function bootstrap(): Promise<void> {
     getDocHeight: () => container.getDocHeight(),
     getViewportHeight: () => container.getHeight(),
     onLongPress: (_barY) => {
-      // 핀 = "지금 보고 있는 화면"을 북마크. 바 어느 위치를 눌러도 현재 scrollY 저장.
-      // 탭 시 setScrollY(pin.y)로 **정확 복원** (eventual UX: save/restore).
-      // 바 마커는 현재 scrollY / docH 위치에 나타남 → indicator 근처.
+      if (!isFeatureAvailable(tier, 'pin-drop')) {
+        showLock('pin-drop');
+        return;
+      }
       const currentScroll = container.getScrollY();
       const added = pinStore.add({ y: currentScroll });
       if (added) {
         renderer.setPins(pinStore.list());
         floatingPins.update(pinStore.list(), container.getDocHeight());
+        playHaptic('pin'); // Pro 햅틱 (native 연결 시)
       }
     },
     onStateChange: (state) => {
@@ -221,11 +276,17 @@ async function bootstrap(): Promise<void> {
       }
     },
     onMagnify: (clientY, docY) => {
+      if (!isFeatureAvailable(tier, 'magnifier')) return;
       magnifier.show(clientY, docY, lastResult);
-      sectionBadge.update(docY, lastResult.anchors);
+      if (isFeatureAvailable(tier, 'section-badge')) {
+        sectionBadge.update(docY, lastResult.anchors);
+      }
     },
     onDoubleTap: () => {
-      // iPhone에서 검색 패널 진입 (Cmd+Shift+F 대체)
+      if (!isFeatureAvailable(tier, 'search')) {
+        showLock('search');
+        return;
+      }
       if (searchPanel.isOpen()) searchPanel.close();
       else searchPanel.open();
     },
@@ -234,18 +295,20 @@ async function bootstrap(): Promise<void> {
   const bus = createObserverBus(document);
   const muteDisposable = bus.onMutation(
     () => {
-      lastResult = scanner.scan(currentScanRoot());
+      lastResult = scanWithFilter();
       renderer.update(lastResult);
       renderer.highlight('slim', vp());
       invalidateSearchIndex();
       reevaluateActivation();
-      sectionBadge.update(container.getScrollY(), lastResult.anchors);
+      if (isFeatureAvailable(tier, 'section-badge')) {
+        sectionBadge.update(container.getScrollY(), lastResult.anchors);
+      }
     },
     { debounceMs: TUNING.mutationDebounceMs },
   );
 
   const spaDisposable = bus.onSpaNavigate(() => {
-    lastResult = scanner.scan(currentScanRoot());
+    lastResult = scanWithFilter();
     renderer.update(lastResult);
     renderer.setPins([]);
     renderer.setTrail([]);
@@ -263,16 +326,20 @@ async function bootstrap(): Promise<void> {
     renderer.highlight('slim', vp());
   });
 
-  // 수동 피커
+  // 수동 피커 (Pro 전용)
   let activePicker: Disposable | null = null;
   function startManualPicker() {
+    if (!isFeatureAvailable(tier, 'manual-picker')) {
+      showLock('manual-picker');
+      return;
+    }
     activePicker?.dispose();
     activePicker = createManualPicker({
       onPicked(el) {
         container = elementTarget(el);
         rebindScrollTarget(el);
         lastTrailY = container.getScrollY();
-        lastResult = scanner.scan(currentScanRoot());
+        lastResult = scanWithFilter();
         renderer.update(lastResult);
         renderer.highlight('slim', vp());
         reevaluateActivation();
@@ -301,10 +368,41 @@ async function bootstrap(): Promise<void> {
         return false;
       }
       case 'settings-changed': {
-        settings = msg.settings;
+        // tier 제약 재적용 — free는 대부분 무시됨
+        settings = applyTierConstraints(tier, msg.settings);
         applyPositionStyle();
         floatingPins.setSide(settings.side);
         floatingPins.setOpacity(settings.floatingOpacity);
+        // 테마 변경 → 렌더러 palette 갱신
+        renderer.setPalette(paletteForTheme(colorScheme, settings.theme));
+        // smart filter 변경 → 재스캔 결과 갱신
+        lastResult = scanWithFilter();
+        renderer.update(lastResult);
+        renderer.highlight('slim', vp());
+        sendResponse({ ok: true } satisfies WsmResponse);
+        return false;
+      }
+      case 'entitlement-changed': {
+        // 네이티브 → 확장: tier 변경. 모든 게이트 재평가.
+        entitlement = msg.entitlement;
+        tier = msg.tier;
+        // tier 상승(free→pro): 기존에 잠겨있던 pro 초기 상태들 활성화
+        // tier 하락(pro→free): UI 일부 숨김 (정교한 cleanup은 다음 사이클)
+        settings = applyTierConstraints(tier, settings);
+        applyPositionStyle();
+        renderer.setPalette(paletteForTheme(colorScheme, settings.theme));
+        lastResult = scanWithFilter();
+        renderer.update(lastResult);
+        if (isFeatureAvailable(tier, 'pin-jump')) renderer.setPins(pinStore.list());
+        else renderer.setPins([]);
+        if (isFeatureAvailable(tier, 'trail')) renderer.setTrail(trailStore.list());
+        else renderer.setTrail([]);
+        if (isFeatureAvailable(tier, 'floating-panel')) {
+          floatingPins.update(pinStore.list(), container.getDocHeight());
+        } else {
+          floatingPins.update([], container.getDocHeight());
+        }
+        renderer.highlight('slim', vp());
         sendResponse({ ok: true } satisfies WsmResponse);
         return false;
       }
@@ -330,6 +428,10 @@ async function bootstrap(): Promise<void> {
           ...(p.color ? { color: p.color } : {}),
         }));
         sendResponse({ ok: true, pins } satisfies WsmResponse);
+        return false;
+      }
+      case 'get-entitlement': {
+        sendResponse({ ok: true, entitlement, tier } satisfies WsmResponse);
         return false;
       }
       case 'jump-to-pin': {
@@ -376,7 +478,7 @@ async function bootstrap(): Promise<void> {
   const onResize = () => reevaluateActivation();
   window.addEventListener('resize', onResize, { passive: true });
 
-  const disposables: Disposable[] = [scrubber, muteDisposable, spaDisposable, vvDisposable, searchPanel, sectionBadge, floatingPins];
+  const disposables: Disposable[] = [scrubber, muteDisposable, spaDisposable, vvDisposable, searchPanel, sectionBadge, floatingPins, upgradeToast];
   let tornDown = false;
   function teardown() {
     if (tornDown) return;

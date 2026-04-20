@@ -89,6 +89,8 @@ export interface RendererOptions {
   dpr: number;
   colorScheme: 'light' | 'dark';
   side: 'left' | 'right';
+  /** Pro 테마 팔레트 override (지정 안 하면 colorScheme 기본 팔레트) */
+  palette?: Record<string, string>;
   onSlowFrame?(ms: number): void;
   /** Pin 탭 → 해당 y로 점프 */
   onPinTap?(pin: Pin): void;
@@ -99,6 +101,7 @@ export interface SearchHitMark {
 }
 
 // Sev1 계약: Canvas/DOM 구현체가 반드시 준수. 드리프트 방지.
+// Palette 타입 순환 참조 방지 위해 any 구조로 선언 — UI 구현체가 검증.
 export interface MinimapRenderer {
   mount(): void;
   update(result: ScannerResult): void;
@@ -106,5 +109,6 @@ export interface MinimapRenderer {
   setPins(pins: ReadonlyArray<Pin>): void;
   setTrail(segs: ReadonlyArray<TrailSegment>): void;
   setSearchHits(hits: ReadonlyArray<SearchHitMark>): void;
+  setPalette(palette: Record<string, string>): void;
   destroy(): void;
 }
