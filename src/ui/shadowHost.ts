@@ -46,7 +46,10 @@ export function mountShadowHost(
     'pointer-events: auto !important',
   ].join(';');
 
-  const root = host.attachShadow({ mode: 'closed' });
+  // Open shadow — closed 모드는 host 밖에서 composedPath()가 shadow 내부 노드를 잘라내
+  // scrubber의 isTrackEvent 가드가 false를 반환하는 문제가 있었음.
+  // S5 방어(다른 확장이 우리 tree 조작)는 랜덤 태그명으로 탐지 난이도를 유지.
+  const root = host.attachShadow({ mode: 'open' });
 
   // Shadow 내부 리셋 — 자식에만 적용.
   // 히트 영역: 44px 전체. 시각: 외곽 6px만 노출 (clip-path).

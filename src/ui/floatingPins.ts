@@ -253,16 +253,17 @@ export function createFloatingPins(root: ShadowRoot, opts: FloatingPinsOpts): Fl
         'display: flex',
         'align-items: center',
         'gap: 8px',
-        'padding: 6px 8px',
+        'padding: 2px 2px 2px 8px', // 우측 패딩 축소 — × 버튼이 자체 패딩 보유
         'border-radius: 6px',
         'cursor: pointer',
+        'touch-action: manipulation',
       ].join(';');
 
       const dot = doc.createElement('span');
       dot.style.cssText = `flex:0 0 auto;width:10px;height:10px;border-radius:50%;background:${p.color ?? 'rgba(249,115,22,1)'};box-shadow:0 0 6px ${p.color ?? 'rgba(249,115,22,0.6)'};`;
 
       const info = doc.createElement('span');
-      info.style.cssText = 'flex:1;font-variant-numeric:tabular-nums;font-size:12px;';
+      info.style.cssText = 'flex:1;font-variant-numeric:tabular-nums;font-size:12px;min-width:0;';
       const pct = Math.round((p.y / cap) * 100);
       info.textContent = `#${i + 1} · ${pct}%`;
 
@@ -270,19 +271,37 @@ export function createFloatingPins(root: ShadowRoot, opts: FloatingPinsOpts): Fl
       del.type = 'button';
       del.setAttribute('aria-label', `Delete pin ${i + 1}`);
       del.textContent = '×';
+      // 히트 영역 확장 — iOS HIG 권장 44pt 근접. li의 우측 영역 분명히 점유.
       del.style.cssText = [
         'appearance: none',
         'background: transparent',
         'border: 0',
         'color: inherit',
-        'opacity: 0.55',
+        'opacity: 0.85',
         'cursor: pointer',
-        'padding: 2px 6px',
-        'border-radius: 4px',
-        'font: 14px -apple-system, system-ui, sans-serif',
+        'padding: 10px 12px',
+        'border-radius: 6px',
+        'font: 18px -apple-system, system-ui, sans-serif',
+        'line-height: 1',
+        'min-width: 40px',
+        'min-height: 40px',
+        'display: flex',
+        'align-items: center',
+        'justify-content: center',
+        'touch-action: manipulation',
+        'flex: 0 0 auto',
+        'pointer-events: auto',
       ].join(';');
+
+      // 포인터 단계부터 전파 차단 — li click (onJump) 침범 방지
+      const stop = (e: Event) => e.stopPropagation();
+      del.addEventListener('pointerdown', stop);
+      del.addEventListener('pointerup', stop);
+      del.addEventListener('touchstart', stop);
+      del.addEventListener('touchend', stop);
       del.addEventListener('click', (e) => {
         e.stopPropagation();
+        e.preventDefault();
         opts.onDelete(p.id);
       });
 
