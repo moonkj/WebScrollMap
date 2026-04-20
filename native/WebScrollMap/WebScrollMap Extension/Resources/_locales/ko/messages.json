@@ -6,6 +6,7 @@
   "sideLeft": { "message": "왼쪽" },
   "sideRight": { "message": "오른쪽" },
   "margin": { "message": "여백" },
+  "floatingOpacity": { "message": "메모장 투명도" },
   "pinsLabel": { "message": "핀" },
   "pinsEmpty": { "message": "아직 핀 없음 — 바를 꾹 누르면 현재 화면이 저장돼요" },
   "clearPins": { "message": "핀 비우기" },

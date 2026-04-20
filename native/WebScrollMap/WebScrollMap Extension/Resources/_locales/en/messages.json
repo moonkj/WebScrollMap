@@ -6,6 +6,7 @@
   "sideLeft": { "message": "Left" },
   "sideRight": { "message": "Right" },
   "margin": { "message": "Margin" },
+  "floatingOpacity": { "message": "Pin pad opacity" },
   "pinsLabel": { "message": "Pins" },
   "pinsEmpty": { "message": "No pins yet — long-press the bar to bookmark current view" },
   "clearPins": { "message": "Clear Pins" },

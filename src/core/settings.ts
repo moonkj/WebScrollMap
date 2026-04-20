@@ -8,10 +8,12 @@ const KEY = 'wsm:settings:v1';
 
 function sanitize(raw: unknown): Settings {
   const src = (raw && typeof raw === 'object' ? raw : {}) as Partial<Settings>;
+  const opacity = src.floatingOpacity === 40 || src.floatingOpacity === 70 ? src.floatingOpacity : 100;
   return {
     enabled: typeof src.enabled === 'boolean' ? src.enabled : DEFAULT_SETTINGS.enabled,
     side: src.side === 'left' ? 'left' : 'right',
     marginPx: src.marginPx === 0 || src.marginPx === 24 ? src.marginPx : 16,
+    floatingOpacity: opacity,
     telemetryOptIn: typeof src.telemetryOptIn === 'boolean' ? src.telemetryOptIn : false,
     onboardingCompleted:
       typeof src.onboardingCompleted === 'boolean' ? src.onboardingCompleted : false,

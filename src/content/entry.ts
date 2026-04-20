@@ -120,6 +120,7 @@ async function bootstrap(): Promise<void> {
       floatingPins.update(pinStore.list(), container.getDocHeight());
     },
   });
+  floatingPins.setOpacity(settings.floatingOpacity);
 
   function currentScanRoot(): Element {
     return container.kind === 'element' && container.el ? container.el : document.body;
@@ -303,6 +304,7 @@ async function bootstrap(): Promise<void> {
         settings = msg.settings;
         applyPositionStyle();
         floatingPins.setSide(settings.side);
+        floatingPins.setOpacity(settings.floatingOpacity);
         sendResponse({ ok: true } satisfies WsmResponse);
         return false;
       }

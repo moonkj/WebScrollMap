@@ -1,10 +1,13 @@
 // content ↔ popup ↔ background 공용 메시지 프로토콜.
 // browser.runtime.sendMessage 기반, TypeScript discriminated union.
 
+export type FloatingOpacity = 40 | 70 | 100;
+
 export interface Settings {
   enabled: boolean;
   side: 'left' | 'right';
   marginPx: 0 | 16 | 24;
+  floatingOpacity: FloatingOpacity;
   telemetryOptIn: boolean;
   onboardingCompleted: boolean;
 }
@@ -13,6 +16,7 @@ export const DEFAULT_SETTINGS: Settings = {
   enabled: true,
   side: 'right',
   marginPx: 16,
+  floatingOpacity: 100,
   telemetryOptIn: false,
   onboardingCompleted: false,
 };

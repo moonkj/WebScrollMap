@@ -141,6 +141,9 @@ function render(settings: Settings, status: PageStatus | null) {
   document.querySelectorAll<HTMLButtonElement>('[data-margin]').forEach((b) => {
     b.setAttribute('aria-pressed', String(Number(b.dataset.margin)) === String(settings.marginPx) ? 'true' : 'false');
   });
+  document.querySelectorAll<HTMLButtonElement>('[data-opacity]').forEach((b) => {
+    b.setAttribute('aria-pressed', String(Number(b.dataset.opacity)) === String(settings.floatingOpacity) ? 'true' : 'false');
+  });
 
   const el = document.getElementById('status');
   if (el) {
@@ -195,6 +198,18 @@ async function init() {
       const raw = Number(b.dataset.margin);
       const m = raw === 0 || raw === 24 ? raw : 16;
       const next = await saveSettings({ marginPx: m });
+      if (next) {
+        settings = next;
+        render(settings, status);
+      }
+    }),
+  );
+
+  document.querySelectorAll<HTMLButtonElement>('[data-opacity]').forEach((b) =>
+    b.addEventListener('click', async () => {
+      const raw = Number(b.dataset.opacity);
+      const v = raw === 40 || raw === 70 ? raw : 100;
+      const next = await saveSettings({ floatingOpacity: v as 40 | 70 | 100 });
       if (next) {
         settings = next;
         render(settings, status);

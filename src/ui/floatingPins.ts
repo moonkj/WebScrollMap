@@ -9,6 +9,8 @@ import type { Disposable, Pin } from '@core/types';
 export interface FloatingPinsApi extends Disposable {
   update(pins: ReadonlyArray<Pin>, docHeight: number): void;
   setSide(side: 'left' | 'right'): void;
+  /** 40 | 70 | 100 — 투명도 백분율. Shadow host 내 wrapper opacity에 적용. */
+  setOpacity(pct: number): void;
 }
 
 export interface FloatingPinsOpts {
@@ -418,6 +420,10 @@ export function createFloatingPins(root: ShadowRoot, opts: FloatingPinsOpts): Fl
     setSide(next) {
       side = next;
       applySide();
+    },
+    setOpacity(pct) {
+      const clamped = Math.max(20, Math.min(100, pct)) / 100;
+      wrapper.style.setProperty('opacity', String(clamped));
     },
     dispose() {
       header.removeEventListener('pointerdown', onHeaderPointerDown);

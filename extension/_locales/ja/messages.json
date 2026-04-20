@@ -6,6 +6,7 @@
   "sideLeft": { "message": "左" },
   "sideRight": { "message": "右" },
   "margin": { "message": "余白" },
+  "floatingOpacity": { "message": "ピンパッド 透明度" },
   "pinsLabel": { "message": "ピン" },
   "pinsEmpty": { "message": "ピンなし — バーを長押しで現在位置を保存" },
   "clearPins": { "message": "ピンを削除" },
