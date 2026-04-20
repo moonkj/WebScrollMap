@@ -92,19 +92,26 @@ export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
     return pct * api.getDocHeight();
   }
 
+  // 스크럽 중엔 snap 없이 자유 스크롤 (사용자 피드백: "작은 움직임이 같은 위치 왔다갔다")
+  // 스냅은 pointerup(손 뗄 때)에만 적용 → applyFinalSnap
   function applyScroll() {
     if (pendingY === null) {
       ticking = false;
       return;
     }
+    api.scrollTo(pendingY);
+    pendingY = null;
+    ticking = false;
+  }
+
+  function applyFinalSnap(clientY: number) {
+    const docY = mapEventToY(clientY);
     const candidates = api.snapCandidates();
-    const snapped = snapToAnchor(pendingY, candidates);
+    const snapped = snapToAnchor(docY, candidates);
     if (snapped.snapped) {
       api.onHaptic?.('snap');
     }
     api.scrollTo(snapped.y);
-    pendingY = null;
-    ticking = false;
   }
 
   function onPointerDown(e: PointerEvent) {
@@ -185,6 +192,10 @@ export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
         ticking = true;
         requestAnimationFrame(applyScroll);
       }
+    }
+    // 스크럽 종료 시 마지막 위치 스냅 (드래그 중엔 자유 스크롤이었음)
+    if (e && !longPressFired && !scrollGated) {
+      applyFinalSnap(e.clientY);
     }
     // Double-tap 감지: 움직이지 않은 짧은 탭이 연속 2번 + 핀 미발화
     if (e && !moved && !longPressFired) {
