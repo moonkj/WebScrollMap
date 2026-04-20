@@ -1,0 +1,13 @@
+{
+  "appName": { "message": "WebScrollMap" },
+  "appDescription": { "message": "長いウェブページを右のミニマップで地図のように探索" },
+  "toggle": { "message": "有効" },
+  "side": { "message": "位置" },
+  "sideLeft": { "message": "左" },
+  "sideRight": { "message": "右" },
+  "margin": { "message": "余白" },
+  "clearPins": { "message": "ピンを削除" },
+  "clearTrail": { "message": "軌跡を削除" },
+  "helpHint": { "message": "ミニマップを長押しでピンを立てます" },
+  "permissionReason": { "message": "ページ構造を読み取りミニマップを描画するために必要です。" }
+}

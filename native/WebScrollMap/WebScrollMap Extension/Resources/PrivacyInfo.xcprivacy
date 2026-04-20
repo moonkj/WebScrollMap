@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- WebScrollMap Privacy Manifest -->
+  <!-- S3: Browsing History — pathname을 sessionStorage에 저장 (Pin/Trail) -->
+  <!-- S9: Crash/product interaction — opt-in only, 현재 MVP는 수집 없음 -->
+
+  <key>NSPrivacyTracking</key>
+  <false/>
+
+  <key>NSPrivacyTrackingDomains</key>
+  <array/>
+
+  <key>NSPrivacyCollectedDataTypes</key>
+  <array>
+    <dict>
+      <!-- 현재 pathname은 기기 외부로 전송되지 않고 sessionStorage에만 저장됨.
+           Apple 가이드라인상 "Collected Data"는 3rd party 전송 기준이라 엄밀히는
+           선언 의무 없음. 그러나 심사 편의를 위해 향후 opt-in 텔레메트리에서
+           선언할 항목을 미리 자리 잡아둠. MVP 시점엔 빈 배열 유지. -->
+    </dict>
+  </array>
+
+  <key>NSPrivacyAccessedAPITypes</key>
+  <array>
+    <!-- 사용자 기본값(UserDefaults) 접근: Safari WE storage API 기반이라 엄밀히는 불필요하지만 Xcode 래퍼에서 참조 시를 대비 -->
+    <dict>
+      <key>NSPrivacyAccessedAPIType</key>
+      <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+      <key>NSPrivacyAccessedAPITypeReasons</key>
+      <array>
+        <string>CA92.1</string>
+      </array>
+    </dict>
+  </array>
+</dict>
+</plist>

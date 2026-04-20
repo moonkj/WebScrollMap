@@ -136,8 +136,17 @@ Architect 판단: 실기기 불필요한 영역 집중 처리.
 - Vite 3엔트리: content 28.5KB / background 2.39KB / popup 3.00KB
 - Playwright perf 스펙 (WebKit) 스캐폴드 준비
 
-### 다음 단계 (Phase 5)
-- Xcode Safari App Extension 래퍼 구성 (실기기 필요)
-- 아이콘 에셋 디자인
-- Playwright perf 게이트 CI 통합 + 카나리
-- TestFlight 대체 배포 (Developer ID)
+### [20] Phase 5 — iOS 실기기 설치 준비
+- `xcrun safari-web-extension-converter` 로 네이티브 iOS 래퍼 자동 생성 (`native/WebScrollMap/`)
+- `scripts/gen-icons.py` (Pillow) — AppIcon(1024 light/dark/tinted) + LargeIcon(256) + 웹 확장(16/32/48/64/128)
+- `manifest.json`에 `icons` + `action.default_icon` 선언
+- iOS Simulator (iPhone 15 Pro) 빌드 **BUILD SUCCEEDED**
+- `docs/INSTALL_IOS.md` — Apple ID Free 계정으로 Xcode ⌘R 설치하는 가이드
+- `.gitignore`에 Xcode DerivedData/xcuserdata 제외
+
+### 다음 단계 (Phase 6)
+- 사용자가 Xcode에서 실기기 iPhone에 설치 (GUI 단계)
+- 실기기 검증 리포트 수집 (엣지 스와이프, 스크럽 FPS, 다크모드 전환)
+- 아이콘 디자인 확정
+- Playwright perf 게이트 CI 통합
+- TestFlight/App Store 심사 제출

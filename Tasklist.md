@@ -106,7 +106,13 @@
 - [x] `ui/renderer` — `setSearchHits` 계약 확장 + Canvas/DOM 양 구현 glow 마커
 - [x] Playwright WebKit perf 게이트 스캐폴드 (`tests/perf/`) + long-article fixture
 - [x] Phase 4 Debugger: Sev1 2건 + Sev2 3건 수정
-- [ ] Xcode Safari App Extension 래퍼 (실기기) — 다음 사이클
+- [x] Xcode Safari App Extension 래퍼 (`safari-web-extension-converter` iOS-only)
+- [x] 아이콘 에셋 생성 파이프라인 (`scripts/gen-icons.py`, Pillow 기반, light/dark/tinted)
+- [x] iOS Simulator 빌드 검증 (BUILD SUCCEEDED, iPhone 15 Pro)
+- [x] 아이폰 설치 가이드 [`docs/INSTALL_IOS.md`](docs/INSTALL_IOS.md)
+- [ ] 실기기 설치 (사용자 Xcode GUI 단계)
+- [ ] 실기기 검증: iOS Safari 엣지 스와이프, 스크럽 60fps, 다크모드 전환
+- [ ] 아이콘 디자인 확정 (현재 placeholder)
 
 ## 2. Phase: 차별화 기능
 - [ ] Anchor Snap (±12px)

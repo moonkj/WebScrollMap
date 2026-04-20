@@ -8,3 +8,9 @@ coverage/
 .idea/
 playwright-report/
 test-results/
+# Xcode
+native/**/xcuserdata/
+native/**/*.xcuserstate
+native/**/project.xcworkspace/
+native/**/DerivedData/
+native/**/build/
