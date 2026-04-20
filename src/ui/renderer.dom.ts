@@ -24,6 +24,7 @@ export function createDomRenderer(root: ShadowRoot, opts: RendererOptions): Mini
   container.appendChild(trailLayer);
 
   const pinsLayer = doc.createElement('div');
+  // Pin 탭 이벤트 수신을 위해 pointer-events auto. 개별 pin 요소에 click 핸들러.
   pinsLayer.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;';
   container.appendChild(pinsLayer);
 
@@ -90,12 +91,22 @@ export function createDomRenderer(root: ShadowRoot, opts: RendererOptions): Mini
       for (const p of pins) {
         const el = doc.createElement('div');
         const yPct = (p.y / (docHeight || 1)) * 100;
-        // 바의 보이는 가장자리(외곽 6px clip 영역) 안에 렌더. 3×6px solid dot.
+        const color = p.color ?? palette.pin;
+        // 히트 영역 확장: 보이는 6px 도트 + 주변 히트 영역(12px 높이, 바 전체 폭)
         const edgeStyle = isRight
-          ? 'right:0;width:6px;'
-          : 'left:0;width:6px;';
-        el.style.cssText = `position:absolute;top:${yPct.toFixed(3)}%;transform:translateY(-50%);${edgeStyle}height:6px;background:${p.color ?? palette.searchGlow};border-radius:2px;box-shadow:0 0 6px ${p.color ?? palette.searchGlow};animation:wsm-pin-pulse 500ms ease-out;`;
+          ? 'right:0;width:100%;'
+          : 'left:0;width:100%;';
+        el.style.cssText = `position:absolute;top:${yPct.toFixed(3)}%;transform:translateY(-50%);${edgeStyle}height:12px;pointer-events:auto;cursor:pointer;`;
+        // 내부 visible dot
+        const dot = doc.createElement('div');
+        const dotEdge = isRight ? 'right:0;' : 'left:0;';
+        dot.style.cssText = `position:absolute;top:50%;transform:translateY(-50%);${dotEdge}width:6px;height:6px;background:${color};border-radius:3px;box-shadow:0 0 6px ${color},0 0 2px #fff;animation:wsm-pin-pulse 500ms ease-out;pointer-events:none;`;
+        el.appendChild(dot);
         if (p.label) el.setAttribute('aria-label', p.label);
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          opts.onPinTap?.(p);
+        });
         pinsLayer.appendChild(el);
       }
     },

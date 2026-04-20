@@ -90,6 +90,8 @@ export interface RendererOptions {
   colorScheme: 'light' | 'dark';
   side: 'left' | 'right';
   onSlowFrame?(ms: number): void;
+  /** Pin 탭 → 해당 y로 점프 */
+  onPinTap?(pin: Pin): void;
 }
 
 export interface SearchHitMark {

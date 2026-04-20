@@ -8,6 +8,6 @@
   "margin": { "message": "余白" },
   "clearPins": { "message": "ピンを削除" },
   "clearTrail": { "message": "軌跡を削除" },
-  "helpHint": { "message": "ミニマップを長押しでピンを立てます" },
+  "helpHint": { "message": "長押しでピン · ピンをタップでジャンプ · ダブルタップで検索" },
   "permissionReason": { "message": "ページ構造を読み取りミニマップを描画するために必要です。" }
 }

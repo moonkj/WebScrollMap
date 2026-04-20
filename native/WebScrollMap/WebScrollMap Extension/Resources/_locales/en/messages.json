@@ -8,6 +8,6 @@
   "margin": { "message": "Margin" },
   "clearPins": { "message": "Clear Pins" },
   "clearTrail": { "message": "Clear Trail" },
-  "helpHint": { "message": "Long-press on the minimap to drop a pin" },
+  "helpHint": { "message": "Long-press to drop a pin · Tap a pin to jump · Double-tap to search" },
   "permissionReason": { "message": "Access is required to read the page structure and draw the minimap." }
 }

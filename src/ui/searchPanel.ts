@@ -29,7 +29,8 @@ export function createSearchPanel(
   panel.style.cssText = [
     'position: fixed',
     'top: 16px',
-    'right: 68px',
+    'right: 16px',
+    'left: auto',
     'display: none',
     'align-items: center',
     'gap: 6px',
@@ -41,7 +42,7 @@ export function createSearchPanel(
     'box-shadow: 0 4px 12px rgba(15,23,42,0.15)',
     'font: 13px -apple-system, system-ui, sans-serif',
     'pointer-events: auto',
-    'z-index: 1',
+    'z-index: 2',
   ].join(';');
 
   const input = doc.createElement('input');
@@ -136,6 +137,19 @@ export function createSearchPanel(
   next.addEventListener('click', () => step(+1));
   closeBtn.addEventListener('click', () => closePanel());
 
+  // iOS Safari: URL bar가 스크롤에 따라 축소/확장되어 fixed 요소를 덮는 경우가 있음.
+  // visualViewport.offsetTop + offsetLeft + height을 기준으로 동적 재배치.
+  function reposition() {
+    const vv = window.visualViewport;
+    const offsetTop = vv ? vv.offsetTop : 0;
+    const pageOffsetY = window.scrollY || 0;
+    panel.style.top = `${offsetTop + 16}px`;
+    // page 스크롤이 크고 fixed가 layout viewport 기준일 때 보정
+    if (vv && Math.abs(vv.offsetTop - pageOffsetY) > 1) {
+      // nothing more, offsetTop 이미 반영됨
+    }
+  }
+
   // Sev2 fix: 패널 밖 클릭 시 닫힘
   function onOutsideDown(e: PointerEvent) {
     if (!open) return;
@@ -143,10 +157,17 @@ export function createSearchPanel(
     if (!path.includes(panel)) closePanel();
   }
 
+  const onVvChange = () => reposition();
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', onVvChange);
+    window.visualViewport.addEventListener('scroll', onVvChange);
+  }
+
   function openPanel() {
     if (open) return;
     open = true;
     panel.style.display = 'flex';
+    reposition(); // 열 때 현재 visualViewport 기준으로 고정
     input.value = '';
     hits = [];
     idx = -1;
@@ -174,6 +195,10 @@ export function createSearchPanel(
     dispose() {
       if (debounceTimer !== null) clearTimeout(debounceTimer);
       doc.removeEventListener('pointerdown', onOutsideDown, true);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', onVvChange);
+        window.visualViewport.removeEventListener('scroll', onVvChange);
+      }
       panel.remove();
     },
   };

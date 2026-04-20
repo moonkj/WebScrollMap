@@ -8,6 +8,7 @@ export interface Palette {
   link: string;
   trail: string;
   searchGlow: string;
+  pin: string;
 }
 
 export function paletteFor(scheme: 'light' | 'dark'): Palette {
@@ -22,6 +23,7 @@ export function paletteFor(scheme: 'light' | 'dark'): Palette {
       link: 'rgba(150,180,255,0.5)',
       trail: 'rgba(200,200,200,0.2)',
       searchGlow: 'rgba(34,211,238,0.9)',
+      pin: 'rgba(251,146,60,1)', // 앰버 오렌지 — 검색 발광과 구분
     };
   }
   return {
@@ -34,5 +36,6 @@ export function paletteFor(scheme: 'light' | 'dark'): Palette {
     link: 'rgba(90,90,120,0.45)',
     trail: 'rgba(0,0,0,0.12)',
     searchGlow: 'rgba(8,145,178,0.85)',
+    pin: 'rgba(249,115,22,1)', // 오렌지 500
   };
 }

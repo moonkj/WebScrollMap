@@ -77,6 +77,11 @@ async function bootstrap(): Promise<void> {
     dpr: window.devicePixelRatio || 1,
     colorScheme,
     side: settings.side,
+    onPinTap: (pin) => {
+      // 핀 탭 → 해당 위치로 부드럽게 이동. 뷰포트 중앙에 오도록 보정.
+      const targetY = Math.max(0, pin.y - container.getHeight() / 3);
+      container.setScrollY(targetY);
+    },
   });
   renderer.mount();
 

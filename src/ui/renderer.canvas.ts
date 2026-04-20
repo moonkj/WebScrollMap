@@ -104,10 +104,10 @@ export function createCanvasRenderer(root: ShadowRoot, opts: RendererOptions): M
       }
     }
 
-    // pins — 바의 보이는 가장자리에 solid dot
+    // pins — 바의 보이는 가장자리에 solid dot (오렌지 핀 색)
     for (const p of lastPins) {
       const y = p.y * scale;
-      ctx.fillStyle = p.color ?? palette.searchGlow;
+      ctx.fillStyle = p.color ?? palette.pin;
       const px = isRight ? W - 6 : 0;
       ctx.fillRect(px, y - 3, 6, 6);
     }
@@ -117,10 +117,35 @@ export function createCanvasRenderer(root: ShadowRoot, opts: RendererOptions): M
     warnSlowFrame(performance.now() - t0);
   }
 
+  // Canvas는 div 핀 요소가 없으므로 canvas 자체에 click 리스너로 y → pin 매칭.
+  function onCanvasClick(e: MouseEvent) {
+    if (!lastResult || lastPins.length === 0 || !opts.onPinTap) return;
+    const rect = canvas.getBoundingClientRect();
+    const yInCanvas = e.clientY - rect.top;
+    const docH = lastResult.docHeight || 1;
+    const scale = opts.height / docH;
+    // 탭 영역 ±8px 허용
+    let best: Pin | null = null;
+    let bestDist = 8;
+    for (const p of lastPins) {
+      const py = p.y * scale;
+      const d = Math.abs(py - yInCanvas);
+      if (d < bestDist) {
+        bestDist = d;
+        best = p;
+      }
+    }
+    if (best) {
+      e.stopPropagation();
+      opts.onPinTap(best);
+    }
+  }
+
   return {
     mount() {
       root.appendChild(canvas);
       applyBackingStore(opts.width, opts.height);
+      canvas.addEventListener('click', onCanvasClick);
     },
     update(result) {
       lastResult = result;
@@ -142,6 +167,7 @@ export function createCanvasRenderer(root: ShadowRoot, opts: RendererOptions): M
       if (lastResult) drawAll(lastState, lastViewport);
     },
     destroy() {
+      canvas.removeEventListener('click', onCanvasClick);
       canvas.remove();
     },
   };
