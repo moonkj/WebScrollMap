@@ -8,7 +8,8 @@ import type { Disposable } from '@core/types';
 export const SNAP_THRESHOLD = TUNING.snapThresholdPx;
 export const EDGE_MARGIN = TUNING.edgeMarginPx;
 export const LONG_PRESS_MS = 500;
-export const LONG_PRESS_MOVE_TOLERANCE_PX = 6;
+// iOS 터치 흔들림 현실 반영: 10px 이내는 같은 지점으로 간주.
+export const LONG_PRESS_MOVE_TOLERANCE_PX = 10;
 export const DOUBLE_TAP_MS = 280;
 export const DOUBLE_TAP_MOVE_TOLERANCE_PX = 12;
 
@@ -22,6 +23,18 @@ export interface ScrubberApi {
   onLongPress?(y: number): void;
   onMagnify?(clientY: number, docY: number): void;
   onDoubleTap?(): void;
+}
+
+// 이벤트가 실제 미니맵 track(.wsm-track) 위에서 발생했는지 확인.
+// 플로팅 패널/검색 패널 등 shadow 내 다른 UI에 대한 터치는 스크러버를 건너뛴다.
+function isTrackEvent(e: Event): boolean {
+  const path = e.composedPath();
+  for (const n of path) {
+    if (n instanceof Element && n.classList && n.classList.contains('wsm-track')) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
@@ -85,6 +98,8 @@ export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
   }
 
   function onPointerDown(e: PointerEvent) {
+    // 플로팅 패널/검색 패널 등 track이 아닌 shadow 요소에 대한 포인터는 무시
+    if (!isTrackEvent(e)) return;
     if (e.pointerType === 'touch' && inEdgeZone(e.clientX)) {
       // 엣지 양보 (뒤로가기 제스처 우선)
       api.onHaptic?.('edge');
@@ -188,7 +203,9 @@ export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
   const onUpEvt = (e: PointerEvent) => onPointerUp(e);
   const onCancelEvt = () => onPointerUp();
   // iOS: touchstart preventDefault로 네이티브 텍스트 선택/콜아웃 차단. passive:false 필수.
+  // track에서만 막음 — 플로팅 패널/검색 패널에서의 탭은 그대로 통과.
   const onTouchStart = (e: TouchEvent) => {
+    if (!isTrackEvent(e)) return;
     if (e.cancelable) e.preventDefault();
   };
   el.addEventListener('pointerdown', onPointerDown);

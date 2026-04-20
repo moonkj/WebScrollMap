@@ -77,10 +77,14 @@ export function createFloatingPins(root: ShadowRoot, opts: FloatingPinsOpts): Fl
     'border-bottom: 1px solid currentColor',
     'opacity: 0.95',
     'gap: 6px',
+    'cursor: move',
+    'touch-action: none',
+    '-webkit-user-select: none',
+    'user-select: none',
   ].join(';');
   const title = doc.createElement('span');
-  title.textContent = '핀';
-  title.style.cssText = 'font-weight: 600; font-size: 12px; letter-spacing: 0.02em;';
+  title.textContent = '⋮⋮ 핀';
+  title.style.cssText = 'font-weight: 600; font-size: 12px; letter-spacing: 0.02em; pointer-events: none;';
   const minBtn = doc.createElement('button');
   minBtn.type = 'button';
   minBtn.setAttribute('aria-label', 'Minimize');
@@ -134,14 +138,111 @@ export function createFloatingPins(root: ShadowRoot, opts: FloatingPinsOpts): Fl
   wrapper.append(panel, bubble);
   root.appendChild(wrapper);
 
+  // 사용자 드래그 위치 저장 (세션 단위).
+  let userDraggedPos: { top: number; left: number } | null = null;
+  const STORAGE_KEY = 'wsm:fp:pos:v1';
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed.top === 'number' && typeof parsed.left === 'number') {
+        userDraggedPos = parsed;
+      }
+    }
+  } catch {
+    // noop
+  }
+
+  function clampToViewport(top: number, left: number): { top: number; left: number } {
+    const w = wrapper.offsetWidth || 200;
+    const h = wrapper.offsetHeight || 100;
+    const maxLeft = Math.max(0, window.innerWidth - w - 4);
+    const maxTop = Math.max(0, window.innerHeight - h - 4);
+    return {
+      top: Math.max(4, Math.min(maxTop, top)),
+      left: Math.max(4, Math.min(maxLeft, left)),
+    };
+  }
+
+  function applyDraggedPos() {
+    if (!userDraggedPos) return;
+    const c = clampToViewport(userDraggedPos.top, userDraggedPos.left);
+    wrapper.style.setProperty('top', `${c.top}px`);
+    wrapper.style.setProperty('left', `${c.left}px`);
+    wrapper.style.setProperty('right', 'auto');
+    wrapper.style.setProperty('bottom', 'auto');
+  }
+
   function applySide() {
-    // 바 반대편 bottom 코너
-    const horizontal = side === 'right' ? 'left' : 'right';
+    if (userDraggedPos) {
+      applyDraggedPos();
+      return;
+    }
+    // 기본: 바 반대편 bottom 코너
+    wrapper.style.setProperty('bottom', 'calc(env(safe-area-inset-bottom, 0px) + 80px)');
+    wrapper.style.setProperty('top', 'auto');
     wrapper.style.setProperty('left', side === 'right' ? '16px' : 'auto');
     wrapper.style.setProperty('right', side === 'right' ? 'auto' : '16px');
-    void horizontal;
   }
   applySide();
+
+  // 헤더 드래그 처리.
+  let dragging = false;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let startTop = 0;
+  let startLeft = 0;
+  let dragPointerId: number | null = null;
+
+  function onHeaderPointerDown(e: PointerEvent) {
+    // 삭제/최소화 버튼에서 시작된 경우는 드래그 시작하지 않음.
+    const target = e.target as HTMLElement | null;
+    if (target && target.tagName === 'BUTTON') return;
+    dragging = true;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    const rect = wrapper.getBoundingClientRect();
+    startTop = rect.top;
+    startLeft = rect.left;
+    // 즉시 top/left 기반으로 전환 (right/bottom 해제)
+    wrapper.style.setProperty('top', `${startTop}px`);
+    wrapper.style.setProperty('left', `${startLeft}px`);
+    wrapper.style.setProperty('right', 'auto');
+    wrapper.style.setProperty('bottom', 'auto');
+    dragPointerId = e.pointerId;
+    try {
+      header.setPointerCapture(e.pointerId);
+    } catch {
+      // noop
+    }
+    e.preventDefault();
+  }
+  function onHeaderPointerMove(e: PointerEvent) {
+    if (!dragging) return;
+    if (dragPointerId !== null && e.pointerId !== dragPointerId) return;
+    const dx = e.clientX - dragStartX;
+    const dy = e.clientY - dragStartY;
+    const c = clampToViewport(startTop + dy, startLeft + dx);
+    wrapper.style.setProperty('top', `${c.top}px`);
+    wrapper.style.setProperty('left', `${c.left}px`);
+  }
+  function onHeaderPointerUp() {
+    if (!dragging) return;
+    dragging = false;
+    dragPointerId = null;
+    // 현재 위치 저장
+    const rect = wrapper.getBoundingClientRect();
+    userDraggedPos = { top: rect.top, left: rect.left };
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(userDraggedPos));
+    } catch {
+      // noop
+    }
+  }
+  header.addEventListener('pointerdown', onHeaderPointerDown);
+  header.addEventListener('pointermove', onHeaderPointerMove);
+  header.addEventListener('pointerup', onHeaderPointerUp);
+  header.addEventListener('pointercancel', onHeaderPointerUp);
 
   function render(pins: ReadonlyArray<Pin>, docHeight: number) {
     list.textContent = '';
@@ -231,6 +332,10 @@ export function createFloatingPins(root: ShadowRoot, opts: FloatingPinsOpts): Fl
       applySide();
     },
     dispose() {
+      header.removeEventListener('pointerdown', onHeaderPointerDown);
+      header.removeEventListener('pointermove', onHeaderPointerMove);
+      header.removeEventListener('pointerup', onHeaderPointerUp);
+      header.removeEventListener('pointercancel', onHeaderPointerUp);
       wrapper.remove();
     },
   };
