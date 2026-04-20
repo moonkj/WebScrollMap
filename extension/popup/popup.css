@@ -50,13 +50,13 @@ body {
 }
 .wsm-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 7px 0;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 8px 0;
   border-top: 1px solid var(--border);
   gap: 6px;
   min-width: 0;
-  flex-wrap: wrap;
+  width: 100%;
 }
 .wsm-row:first-of-type {
   border-top: 0;
@@ -64,16 +64,7 @@ body {
 .wsm-row > .wsm-label {
   flex: 0 0 auto;
   white-space: nowrap;
-  width: 100%;
 }
-/* 세그가 있는 row는 라벨 아래에 전폭으로 */
-.wsm-row > .wsm-seg,
-.wsm-row > .wsm-theme-row {
-  width: 100%;
-  justify-content: flex-start;
-}
-/* 폭이 좁은 wsm-switch, wsm-pins-section 등은 단독 row */
-.wsm-row.wsm-switch-row > * { width: auto; }
 .wsm-label {
   color: var(--muted);
   font-size: 11px;
@@ -87,6 +78,11 @@ body {
   cursor: pointer;
   width: 100%;
   justify-content: space-between;
+  flex-direction: row;
+}
+.wsm-switch span:first-child {
+  font-size: 13px;
+  font-weight: 600;
 }
 .wsm-switch input {
   position: absolute;
@@ -126,19 +122,21 @@ body {
   overflow: hidden;
 }
 .wsm-seg {
-  display: inline-flex;
-  flex: 1 1 auto;
+  display: flex;
+  width: 100%;
   min-width: 0;
   max-width: 100%;
   flex-wrap: nowrap;
   overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
 }
 .wsm-seg button {
   appearance: none;
   background: var(--surface);
   border: 0;
   color: var(--fg);
-  padding: 6px 4px;
+  padding: 8px 4px;
   cursor: pointer;
   font: inherit;
   font-size: 12px;
@@ -147,10 +145,10 @@ body {
   min-width: 0;
   white-space: nowrap;
 }
+.wsm-seg button:last-child { border-right: 0; }
 .wsm-seg-narrow button {
-  padding: 4px 8px;
+  padding: 6px 8px;
   font-size: 11px;
-  min-width: 36px;
 }
 .wsm-seg button:last-child {
   border-right: 0;
@@ -160,19 +158,21 @@ body {
   color: #fff;
 }
 .wsm-actions {
-  gap: 6px;
-  justify-content: flex-end;
+  flex-direction: row;
+  gap: 8px;
+  justify-content: stretch;
 }
 .wsm-actions button {
   appearance: none;
   background: var(--surface);
   border: 1px solid var(--border);
   color: var(--fg);
-  padding: 6px 10px;
+  padding: 8px 10px;
   border-radius: 6px;
   cursor: pointer;
   font: inherit;
   font-size: 12px;
+  flex: 1 1 0;
 }
 .wsm-actions button:hover {
   border-color: var(--accent);
@@ -319,20 +319,20 @@ body {
 /* Theme cards */
 .wsm-theme-row {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   flex-wrap: nowrap;
   justify-content: space-between;
-  max-width: 100%;
+  width: 100%;
 }
 .wsm-theme-card {
   appearance: none;
-  width: 32px;
-  height: 32px;
+  aspect-ratio: 1 / 1;
+  height: 36px;
   border-radius: 50%;
   border: 2px solid var(--border);
   background: transparent;
   color: var(--color, #f97316);
-  font-size: 16px;
+  font-size: 18px;
   line-height: 0;
   padding: 0;
   display: flex;

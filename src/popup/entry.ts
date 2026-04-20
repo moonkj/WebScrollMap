@@ -389,11 +389,6 @@ async function init() {
       await refreshPins();
     } catch {}
   });
-  document.getElementById('clear-trail')?.addEventListener('click', async () => {
-    try {
-      await api.runtime.sendMessage({ type: 'clear-trail' });
-    } catch {}
-  });
 
   // Admin override buttons
   document.querySelectorAll<HTMLButtonElement>('[data-override]').forEach((b) =>
