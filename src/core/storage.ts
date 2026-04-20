@@ -4,20 +4,26 @@
 // 주의 (S10): HMAC 키는 "무결성"만 보장. 비밀 보호가 아니다.
 // 페이지 JS가 번들을 디컴파일하면 동일 key로 서명 가능.
 // 따라서 이 레이어는 "우리가 쓰지 않은 값이 들어오는 사고" 방지 목적 — 크래킹 방지는 Store Kit에서.
+//
+// 스키마 버전 마이그레이션:
+// - v1 (초기): 32bit djb2 signature → `h: number`
+// - v2 (보안 강화): 64bit `sign64` (djb2+fnv1a) → `h: string`
+// v1 레코드는 read() 시 version mismatch로 자동 파기. sessionStorage 세션 단위이므로
+// 사용자 영향은 현재 세션 내 pins/trail 1회 리셋만 — 별도 마이그레이션 로직 불필요.
 
-import { djb2 } from './hash';
+import { sign64 } from './hash';
 
 export interface SignedRecord<T> {
-  v: number;      // schema version
+  v: number;      // schema version (v>=2: h는 64bit 합성 문자열)
   ts: number;     // wrote at
-  h: number;      // HMAC-like checksum
+  h: string;      // 64bit 합성 서명 (djb2+fnv1a)
   d: T;           // payload
 }
 
-const KEY_SALT = 0x5a17a17a; // bundle-wide fixed salt
+const KEY_SALT = 0x5a17a17a; // bundle-wide fixed salt (소프트 변조 감지용)
 
-function signBlob(body: string, salt: number): number {
-  return djb2(`${salt}|${body}`);
+function signBlob(body: string, salt: number): string {
+  return sign64(body, salt);
 }
 
 export interface Storage {

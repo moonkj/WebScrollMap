@@ -144,9 +144,70 @@ Architect 판단: 실기기 불필요한 영역 집중 처리.
 - `docs/INSTALL_IOS.md` — Apple ID Free 계정으로 Xcode ⌘R 설치하는 가이드
 - `.gitignore`에 Xcode DerivedData/xcuserdata 제외
 
-### 다음 단계 (Phase 6)
-- 사용자가 Xcode에서 실기기 iPhone에 설치 (GUI 단계)
-- 실기기 검증 리포트 수집 (엣지 스와이프, 스크럽 FPS, 다크모드 전환)
-- 아이콘 디자인 확정
-- Playwright perf 게이트 CI 통합
-- TestFlight/App Store 심사 제출
+### [21] Phase 6 — iOS 실기기 설치 + 즉시 UX 픽스
+- `xcrun devicectl`로 iPhone 자동 설치 파이프라인 구축
+- Closed shadow DOM → Open shadow 전환 (composedPath가 floatingPins/searchPanel 이벤트 차단하던 critical 버그)
+- 중복 주입 가드 (`__WEB_SCROLL_MAP_LOADED__`) + `[data-wsm="1"]` 정리
+- 스크럽 좌표계 통일: `mapEventToY`(scroll) vs `mapEventToDocY`(doc) 분리 → 핀이 누른 자리 위에 찍히던 버그 해소
+- EMA 저역필터 (`EMA_ALPHA=0.35`) → "따닥따닥" jitter 해소
+- 바 두께 CSS var (`--wsm-visible`) + 4/10/20px 옵션 (한글 라벨)
+
+### [22] Free/Pro Tier + StoreKit 2 + 호스트 앱 온보딩
+- `core/featureGate.ts` — 16개 Pro 기능 게이트, `applyTierConstraints`
+- `core/adminConfig.ts` — 5-click unlock / force-free/pro override / 월간 통계 rollover
+- `platform/iapBridge.ts` + Swift `EntitlementManager` — StoreKit 2 + djb2 서명
+- Swift `HapticsManager` — CHHapticEngine pin/snap/edge 패턴
+- 호스트 앱 (Scrolly 패턴 참고): 3단계 온보딩 + 7개 피처 카드 + Privacy/Terms/Support 서브뷰
+- 네이비 테마 아이콘 (`scripts/gen-icons.py`) — Light/Dark/Tinted 1024
+- 구매 실패 분류 (`product-not-available` / `user-cancelled` 등) → 팝업 status 표시
+
+### [23] 2차 팀 리뷰 — Group A/B/C 보안·성능·배터리
+**Group A (즉시 적용):**
+- Page Visibility API — `document.hidden` 시 scroll/trail/mutation 스킵 (iOS 6시간 독서 15~20% 배터리 절감)
+- Device ID: `Math.random` 36bit → `crypto.getRandomValues` 128bit (S4)
+- Pin `aria-label` 익명화 (snippet 페이지 JS 노출 차단) (S7)
+- Bootstrap `Promise.all` 병렬화 (30ms → 12ms)
+
+**Group B (중간 위험):**
+- MutationObserver adaptive debounce (hidden 시 1000ms)
+- Swift `HapticsManager` 8초 idle → engine stop
+- `isWsmMessage` payload 엄격 검증 (S6)
+- clip-path `prefers-reduced-motion` 지원
+- S5 closed shadow 보류: floatingPins/searchPanel 재앙 방지
+
+**Group C (아키텍처):**
+- `sign64` = djb2+fnv1a 64bit hex 합성 (JS+Swift 동기화) — 위조 비용 2^32배 상승
+- storage SignedRecord v1→v2 자동 파기
+
+### [24] 6개 언어 i18n 확장
+- ko / en / ja + **zh_CN / fr / hi** 추가
+- Main.html I18N: zh/fr/hi 엔트리 + 언어 감지 체인 (LEGAL은 영문 fallback)
+- Extension `_locales/*/messages.json` 37키 동기화
+
+### [25] 커버리지 90%+ 달성 — 팀원 4명 병렬 테스트 작성
+- A(Easy): palette/theme/browserApi/platform — 49 tests
+- B(UI render): upgradeToast/sectionBadge/shadowHost/magnifier/rendererDom — 63 tests
+- C(UI state): scrubber/floatingPins/searchPanel/renderer.canvas — 41 tests
+- D(Platform + core boost): observerBus/iapBridge/manualPicker + 기존 4파일 보강 — 84 tests
+- Architect(통합): renderer/telemetrySender + sectionBadge 실제 버그 발굴·수정 — 11 tests
+- **최종: 97개 → 344개 테스트, 커버리지 33.6% → 96.96% stmts / 86.60% branches**
+
+### [26] 3차 팀 리뷰 — P0~P3 17건 일괄 수정
+**재리뷰 발견:**
+- Debugger: Sev2 5 / Sev3 5 (applyTierRefresh 예외 누락, observerBus hidden→visible 영구 미동기화 등)
+- Security: sign64 padding 누락 (길이 가변), S2 근본 취약점 (Apple receipt 필요)
+- UX/Reviewer: `purchaseErrorMessage` 한국어 하드코딩, reduced-motion 미지원, aria-label 영어 고정
+
+**수정 17건 일괄:**
+- **P0×5**: 구매 에러 6개 언어화(12 키 추가) / sign64 8-char padding / zh-CN 전용 감지 / Promise.all 전수 .catch / applyTierRefresh .catch 응답 보장
+- **P1×6**: onVisibilityChange 재스캔 / observerBus pendingSuppressed 재발화 / sectionBadge dedup 순서 / isWsmMessage entitlement 필수 필드 검증 / wsm-shake reduced-motion / 팝업 aria-label 자동 i18n 바인딩
+- **P2×5**: Admin 5-click 진행도 `(N/5)` / searchIndex `requestIdleCallback` 선빌드 / 토스트 동적 duration (2400~5000ms) / HapticsManager DispatchQueue 직렬화 / (Tab selective broadcast 재평가 후 all-tabs 유지)
+- **P3×1**: storage v1→v2 migration 주석
+
+**검증:** Typecheck 통과, **345/345 tests**, 번들 content 54.5KB / background 6.6KB / popup 10.8KB
+
+### 잔존 장기 과제
+- S2: Apple receipt validation (서버 인프라 $200/월) — Pro 우회 근본 해결
+- Swift XCTest 추가 (Native IAP/Haptic 검증)
+- Playwright E2E (happy-dom 한계: Canvas / TreeWalker / history.pushState)
+- LEGAL 정책 ja/zh/fr/hi 번역 (현재 영문 fallback)

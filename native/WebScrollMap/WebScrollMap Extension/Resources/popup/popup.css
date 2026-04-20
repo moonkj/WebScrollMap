@@ -309,13 +309,26 @@ body {
   box-shadow: 0 2px 6px rgba(249,115,22,0.35);
 }
 
-/* Pro lock UX */
+/* Pro lock UX — pointer-events는 유지해서 탭 가능, 실제 저장은 popup 로직에서 차단 */
 .wsm-pro.wsm-locked {
-  opacity: 0.5;
-  pointer-events: none;
+  opacity: 0.55;
+  cursor: pointer;
 }
+.wsm-pro.wsm-locked > * { pointer-events: none; }
 .wsm-pro.wsm-locked .wsm-lock { display: inline; margin-left: 4px; font-size: 10px; }
 .wsm-lock { display: none; }
+@keyframes wsm-lock-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+.wsm-pro.wsm-locked.wsm-shake {
+  animation: wsm-lock-shake 220ms ease-in-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wsm-pro.wsm-locked.wsm-shake { animation: none; }
+  .wsm-switch-slider, .wsm-switch-slider::after { transition: none; }
+}
 
 /* Theme cards */
 .wsm-theme-row {

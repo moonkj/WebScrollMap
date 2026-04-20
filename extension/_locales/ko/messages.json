@@ -6,6 +6,9 @@
   "upgradeCTA": { "message": "업그레이드" },
   "restorePurchases": { "message": "구매 복원" },
   "barWidth": { "message": "바 두께" },
+  "barWidthThin": { "message": "얇게" },
+  "barWidthMedium": { "message": "보통" },
+  "barWidthThick": { "message": "두껍게" },
   "smartFilter": { "message": "필터" },
   "filterAll": { "message": "전체" },
   "filterHeadings": { "message": "제목만" },
@@ -32,5 +35,17 @@
   "clearPins": { "message": "핀 비우기" },
   "clearTrail": { "message": "트레일 비우기" },
   "helpHint": { "message": "바 꾹 누름=현재 화면 저장 · 핀 탭=정확 복원 · 더블탭=검색" },
-  "permissionReason": { "message": "페이지 구조를 읽어 미니맵을 그리기 위해 접근이 필요합니다." }
+  "permissionReason": { "message": "페이지 구조를 읽어 미니맵을 그리기 위해 접근이 필요합니다." },
+  "purchaseInProgress": { "message": "결제 진행 중..." },
+  "restoreInProgress": { "message": "구매 복원 중..." },
+  "proActivated": { "message": "Pro 활성화 완료" },
+  "proRestored": { "message": "Pro 복원 완료" },
+  "restoreNone": { "message": "복원할 구매 내역 없음" },
+  "proLockedHint": { "message": "Pro 전용 — 업그레이드 후 사용 가능" },
+  "purchaseErrProductNotAvailable": { "message": "App Store에 상품이 아직 등록되지 않았습니다. 관리자 모드로 테스트하세요." },
+  "purchaseErrUserCancelled": { "message": "구매가 취소되었습니다" },
+  "purchaseErrPending": { "message": "구매 대기 중 (Ask to Buy 등)" },
+  "purchaseErrVerificationFailed": { "message": "구매 검증 실패" },
+  "purchaseErrNativeUnavailable": { "message": "네이티브 앱 연결 실패 — 호스트 앱 재실행" },
+  "purchaseErrGeneric": { "message": "구매 실패" }
 }

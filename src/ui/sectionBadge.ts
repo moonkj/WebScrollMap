@@ -73,12 +73,15 @@ export function createSectionBadge(
     update(scrollY, anchors) {
       const cur = findCurrent(scrollY, anchors);
       const text = cur ? `${labelPrefix(cur.type)} · ${cur.snippet}` : '';
-      if (text === lastText) return;
-      lastText = text;
+      // 빈 text일 땐 항상 숨김 보장 (show() 후 no-match 시 상태 일치).
+      // dedup은 text가 있을 때만 적용 — DOM 쓰기 비용 감소.
       if (!text) {
+        lastText = '';
         el.classList.remove('wsm-visible');
         return;
       }
+      if (text === lastText) return;
+      lastText = text;
       el.textContent = text;
     },
     setSide(next) {

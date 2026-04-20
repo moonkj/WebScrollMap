@@ -70,6 +70,10 @@ export function mountShadowHost(
       -webkit-clip-path: inset(0 0 0 calc(100% - var(--wsm-visible, 6px)));
       clip-path: inset(0 0 0 calc(100% - var(--wsm-visible, 6px)));
     }
+    /* 접근성 + 배터리: reduce-motion / 화면 미노출 시 GPU 트랜지션 비활성화 */
+    @media (prefers-reduced-motion: reduce) {
+      .wsm-track { transition: none; }
+    }
     :host(.wsm-side-left) .wsm-track {
       -webkit-clip-path: inset(0 calc(100% - var(--wsm-visible, 6px)) 0 0);
       clip-path: inset(0 calc(100% - var(--wsm-visible, 6px)) 0 0);

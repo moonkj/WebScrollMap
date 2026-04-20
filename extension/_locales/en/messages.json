@@ -6,6 +6,9 @@
   "upgradeCTA": { "message": "Upgrade" },
   "restorePurchases": { "message": "Restore purchases" },
   "barWidth": { "message": "Bar width" },
+  "barWidthThin": { "message": "Thin" },
+  "barWidthMedium": { "message": "Medium" },
+  "barWidthThick": { "message": "Thick" },
   "smartFilter": { "message": "Show" },
   "filterAll": { "message": "All" },
   "filterHeadings": { "message": "Headings" },
@@ -32,5 +35,17 @@
   "clearPins": { "message": "Clear Pins" },
   "clearTrail": { "message": "Clear Trail" },
   "helpHint": { "message": "Long-press bar = bookmark current view · Tap pin = return · Double-tap = search" },
-  "permissionReason": { "message": "Access is required to read the page structure and draw the minimap." }
+  "permissionReason": { "message": "Access is required to read the page structure and draw the minimap." },
+  "purchaseInProgress": { "message": "Processing purchase…" },
+  "restoreInProgress": { "message": "Restoring purchases…" },
+  "proActivated": { "message": "Pro activated" },
+  "proRestored": { "message": "Pro restored" },
+  "restoreNone": { "message": "No purchase to restore" },
+  "proLockedHint": { "message": "Pro only — upgrade to unlock" },
+  "purchaseErrProductNotAvailable": { "message": "Pro is not yet listed on App Store. Use Admin mode to test." },
+  "purchaseErrUserCancelled": { "message": "Purchase cancelled" },
+  "purchaseErrPending": { "message": "Purchase pending (Ask to Buy etc.)" },
+  "purchaseErrVerificationFailed": { "message": "Verification failed" },
+  "purchaseErrNativeUnavailable": { "message": "Native app unavailable — relaunch the host app" },
+  "purchaseErrGeneric": { "message": "Purchase failed" }
 }

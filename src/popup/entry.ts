@@ -35,7 +35,13 @@ function applyI18n(root: Document) {
     const k = el.dataset.i18n;
     if (!k) return;
     const v = get(k);
-    if (v !== null) el.textContent = v;
+    if (v !== null) {
+      el.textContent = v;
+      // 버튼류에는 aria-label도 로컬라이즈된 값으로 (스크린리더가 영어 그대로 읽지 않게)
+      if (el.tagName === 'BUTTON' && el.hasAttribute('aria-label')) {
+        el.setAttribute('aria-label', v);
+      }
+    }
   });
 }
 
@@ -71,20 +77,64 @@ async function fetchEntitlement(): Promise<{ tier: Tier; entitlement: Entitlemen
   return { tier: 'free', entitlement: null };
 }
 
-async function purchasePro(): Promise<Tier> {
+async function purchasePro(): Promise<{ tier: Tier; error?: string }> {
   try {
     const r = (await api.runtime.sendMessage({ type: 'purchase-pro' })) as WsmResponse;
-    if (r.ok) return r.tier ?? 'free';
-  } catch {}
-  return 'free';
+    if (r.ok) {
+      const tier = ((r.entitlement as { tier?: Tier } | null)?.tier) ?? r.tier ?? 'free';
+      return { tier };
+    }
+    const tier = ((r.entitlement as { tier?: Tier } | null)?.tier) ?? 'free';
+    return { tier, error: r.error };
+  } catch (e) {
+    return { tier: 'free', error: String(e) };
+  }
 }
 
-async function restorePurchases(): Promise<Tier> {
+async function restorePurchases(): Promise<{ tier: Tier; error?: string }> {
   try {
     const r = (await api.runtime.sendMessage({ type: 'restore-purchases' })) as WsmResponse;
-    if (r.ok) return r.tier ?? 'free';
-  } catch {}
-  return 'free';
+    if (r.ok) {
+      const tier = ((r.entitlement as { tier?: Tier } | null)?.tier) ?? r.tier ?? 'free';
+      return { tier };
+    }
+    const tier = ((r.entitlement as { tier?: Tier } | null)?.tier) ?? 'free';
+    return { tier, error: r.error };
+  } catch (e) {
+    return { tier: 'free', error: String(e) };
+  }
+}
+
+function i18nMessage(key: string): string | null {
+  try {
+    const n = globalThis as unknown as {
+      browser?: { i18n?: { getMessage(k: string): string } };
+      chrome?: { i18n?: { getMessage(k: string): string } };
+    };
+    const msg = n.browser?.i18n?.getMessage(key) ?? n.chrome?.i18n?.getMessage(key);
+    return msg && msg.length > 0 ? msg : null;
+  } catch {
+    return null;
+  }
+}
+
+function purchaseErrorMessage(err: string): string {
+  // _locales에서 로케일별 번역 조회. 누락 시 영어 fallback.
+  const keyMap: Record<string, string> = {
+    'product-not-available': 'purchaseErrProductNotAvailable',
+    'user-cancelled': 'purchaseErrUserCancelled',
+    'pending': 'purchaseErrPending',
+    'verification-failed': 'purchaseErrVerificationFailed',
+    'native not available': 'purchaseErrNativeUnavailable',
+    'native messaging unavailable': 'purchaseErrNativeUnavailable',
+  };
+  const key = keyMap[err];
+  if (key) {
+    const msg = i18nMessage(key);
+    if (msg) return msg;
+  }
+  const fallback = i18nMessage('purchaseErrGeneric');
+  return fallback ? `${fallback}: ${err}` : `Purchase failed: ${err}`;
 }
 
 async function fetchAdminConfig(): Promise<AdminConfig | null> {
@@ -268,14 +318,34 @@ async function init() {
   renderStatus(status);
   applyAdminUI(admin);
 
+  // Pro 잠금 탭 피드백 — locked row 클릭 시 흔들기 + status 메시지
+  document.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement | null;
+    const lockedRow = target?.closest('.wsm-pro.wsm-locked') as HTMLElement | null;
+    if (!lockedRow) return;
+    e.preventDefault();
+    e.stopPropagation();
+    lockedRow.classList.remove('wsm-shake');
+    void lockedRow.offsetWidth; // reflow로 애니메이션 재시작
+    lockedRow.classList.add('wsm-shake');
+    const statusEl = document.getElementById('status');
+    if (statusEl) statusEl.textContent = i18nMessage('proLockedHint') ?? 'Pro only — upgrade to unlock';
+  }, true);
+
   // Version 표시
   const versionText = document.getElementById('version-text');
   if (versionText) versionText.textContent = EXTENSION_VERSION;
 
-  // 5-click unlock
+  // 5-click unlock — 2클릭 이상부터 진행도 (예: "v0.3.0 (3/5)") 표시
   const versionTap = document.getElementById('version-tap');
+  const versionLabel = document.getElementById('version-text');
+  const origVersionText = versionLabel?.textContent ?? '';
   let clickCount = 0;
   let firstClickAt = 0;
+  let resetLabelTimer: ReturnType<typeof setTimeout> | null = null;
+  function resetVersionLabel() {
+    if (versionLabel) versionLabel.textContent = origVersionText;
+  }
   versionTap?.addEventListener('click', async () => {
     const now = Date.now();
     if (now - firstClickAt > UNLOCK_WINDOW_MS) {
@@ -285,14 +355,22 @@ async function init() {
     clickCount += 1;
     if (clickCount >= UNLOCK_CLICK_COUNT) {
       clickCount = 0;
+      if (resetLabelTimer !== null) clearTimeout(resetLabelTimer);
+      resetVersionLabel();
       const nextEnabled = !admin?.adminEnabled;
       await setAdminEnabled(nextEnabled);
       admin = await fetchAdminConfig();
       applyAdminUI(admin);
       versionTap.classList.add('wsm-unlocking');
       setTimeout(() => versionTap.classList.remove('wsm-unlocking'), 600);
-    } else if (clickCount >= 3 && versionTap) {
+    } else if (clickCount >= 2) {
+      if (versionLabel) versionLabel.textContent = `${origVersionText} (${clickCount}/${UNLOCK_CLICK_COUNT})`;
       versionTap.classList.add('wsm-unlocking');
+      if (resetLabelTimer !== null) clearTimeout(resetLabelTimer);
+      resetLabelTimer = setTimeout(() => {
+        resetVersionLabel();
+        versionTap.classList.remove('wsm-unlocking');
+      }, UNLOCK_WINDOW_MS);
     }
   });
 
@@ -368,17 +446,30 @@ async function init() {
 
   // Upgrade
   document.getElementById('upgrade-btn')?.addEventListener('click', async () => {
-    const newTier = await purchasePro();
-    tier = newTier;
+    const statusEl = document.getElementById('status');
+    if (statusEl) statusEl.textContent = i18nMessage('purchaseInProgress') ?? 'Processing…';
+    const result = await purchasePro();
+    tier = result.tier;
     applyTierUI(tier);
+    if (statusEl) {
+      if (result.error) statusEl.textContent = purchaseErrorMessage(result.error);
+      else if (tier === 'pro') statusEl.textContent = i18nMessage('proActivated') ?? 'Pro activated';
+    }
     if (tier === 'pro') await refreshPins();
   });
 
   // Restore
   document.getElementById('restore-btn')?.addEventListener('click', async () => {
-    const newTier = await restorePurchases();
-    tier = newTier;
+    const statusEl = document.getElementById('status');
+    if (statusEl) statusEl.textContent = i18nMessage('restoreInProgress') ?? 'Restoring…';
+    const result = await restorePurchases();
+    tier = result.tier;
     applyTierUI(tier);
+    if (statusEl) {
+      if (result.error) statusEl.textContent = purchaseErrorMessage(result.error);
+      else if (tier === 'pro') statusEl.textContent = i18nMessage('proRestored') ?? 'Pro restored';
+      else statusEl.textContent = i18nMessage('restoreNone') ?? 'No purchase to restore';
+    }
     if (tier === 'pro') await refreshPins();
   });
 

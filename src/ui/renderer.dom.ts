@@ -111,7 +111,8 @@ export function createDomRenderer(root: ShadowRoot, opts: RendererOptions): Mini
         const dotEdge = isRight ? 'right:0;' : 'left:0;';
         dot.style.cssText = `position:absolute;top:50%;transform:translateY(-50%);${dotEdge}width:6px;height:6px;background:${color};border-radius:3px;box-shadow:0 0 6px ${color},0 0 2px #fff;animation:wsm-pin-pulse 500ms ease-out;pointer-events:none;`;
         el.appendChild(dot);
-        if (p.label) el.setAttribute('aria-label', p.label);
+        // aria-label은 익명 (snippet이 page JS로 composedPath 유출되는 것 방지)
+        el.setAttribute('aria-label', 'Pin');
         el.addEventListener('click', (e) => {
           e.stopPropagation();
           opts.onPinTap?.(p);

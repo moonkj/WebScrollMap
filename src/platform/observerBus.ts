@@ -36,20 +36,40 @@ export function createObserverBus(doc: Document = document): ObserverBus {
 
   const onMutation = (cb: () => void, opts?: { debounceMs?: number }): Disposable => {
     const target = pickSemanticContainer(doc);
-    const debounceMs = opts?.debounceMs ?? TUNING.mutationDebounceMs;
+    const normalMs = opts?.debounceMs ?? TUNING.mutationDebounceMs;
+    const liteMs = TUNING.mutationDebounceLiteMs;
     let timer: ReturnType<typeof setTimeout> | null = null;
+    // hidden 중 suppressed 된 mutation 존재 여부 — visibility 복귀 시 fire.
+    let pendingSuppressed = false;
+    // Adaptive: 탭 숨김 / 페이지 blur 상태에서는 긴 debounce (배터리 ↓)
+    const currentDebounce = () =>
+      (typeof document !== 'undefined' && document.hidden) ? liteMs : normalMs;
     const obs = new MutationObserver(() => {
       if (timer !== null) clearTimeout(timer);
       timer = setTimeout(() => {
         timer = null;
+        // hidden 상태 — 플래그만 세우고 실제 cb는 visibility 복귀 시 실행
+        if (typeof document !== 'undefined' && document.hidden) {
+          pendingSuppressed = true;
+          return;
+        }
+        pendingSuppressed = false;
         cb();
-      }, debounceMs);
+      }, currentDebounce());
     });
     obs.observe(target, { childList: true, subtree: true, attributes: false, characterData: false });
+    const onVis = () => {
+      if (typeof document !== 'undefined' && !document.hidden && pendingSuppressed) {
+        pendingSuppressed = false;
+        cb();
+      }
+    };
+    doc.addEventListener('visibilitychange', onVis);
     const d: Disposable = {
       dispose() {
         if (timer !== null) clearTimeout(timer);
         obs.disconnect();
+        doc.removeEventListener('visibilitychange', onVis);
       },
     };
     disposables.push(d);

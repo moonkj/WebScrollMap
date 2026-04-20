@@ -40,10 +40,13 @@ export function createUpgradeToast(root: ShadowRoot, scheme: 'light' | 'dark'): 
       el.style.opacity = '1';
       el.style.transform = 'translateX(-50%) translateY(0)';
       if (hideTimer !== null) clearTimeout(hideTimer);
+      // 메시지 길이 기반 동적 duration — 짧은 문장 2.4s, 긴 프랑스어/힌디어 최대 5s.
+      // base 2400ms + 문자당 30ms, [2400, 5000] clamp.
+      const ms = Math.min(5000, Math.max(2400, 2400 + message.length * 30));
       hideTimer = setTimeout(() => {
         el.style.opacity = '0';
         el.style.transform = 'translateX(-50%) translateY(20px)';
-      }, 2400);
+      }, ms);
     },
     dispose() {
       if (hideTimer !== null) clearTimeout(hideTimer);

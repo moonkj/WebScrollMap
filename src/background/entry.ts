@@ -15,6 +15,8 @@ const api = getBrowserApi();
 async function broadcastSettings(tabs: NonNullable<typeof api.tabs>) {
   const current = await loadSettings(api.storage.local);
   try {
+    // 설정 변경은 드문 이벤트 — 모든 탭에 브로드캐스트 유지 (백그라운드 탭 stale 방지).
+    // sendMessage는 리스너 없는 탭에서 silent fail — 실제 비용은 수 ms 수준.
     const all = await tabs.query({});
     for (const t of all) {
       if (typeof t.id === 'number') {
@@ -113,7 +115,7 @@ api.runtime.onMessage.addListener((raw, _sender, sendResponse) => {
         nativeApi.runtime
           .sendNativeMessage(NATIVE_APP_ID, msg)
           .then((r) => {
-            const native = r as { ok?: boolean; entitlement?: unknown };
+            const native = r as { ok?: boolean; entitlement?: unknown; error?: string };
             if (native?.ok) {
               // verifyEntitlement는 content 쪽에서 재처리. 여기선 tier 판정은 스킵.
               sendResponse({ ok: true, entitlement: native.entitlement as never } satisfies WsmResponse);
@@ -132,7 +134,12 @@ api.runtime.onMessage.addListener((raw, _sender, sendResponse) => {
                 }).catch(() => {});
               }
             } else {
-              sendResponse({ ok: false, error: 'native not available' } satisfies WsmResponse);
+              // 실패해도 native가 entitlement를 돌려줄 수 있으므로 전달
+              sendResponse({
+                ok: false,
+                error: native?.error ?? 'native not available',
+                entitlement: (native?.entitlement as never) ?? null,
+              } satisfies WsmResponse);
             }
           })
           .catch((e: unknown) => sendResponse({ ok: false, error: String(e) } satisfies WsmResponse));

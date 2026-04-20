@@ -19,7 +19,7 @@ import { createTrailStore } from '@core/trail';
 import { loadSettings } from '@core/settings';
 import { getBrowserApi } from '@platform/browserApi';
 import { fetchEntitlement, playHaptic } from '@platform/iapBridge';
-import { isWsmMessage, type PageStatus, type PinSummary, type Settings, type WsmMessage, type WsmResponse } from '@core/messages';
+import { DEFAULT_SETTINGS, isWsmMessage, type PageStatus, type PinSummary, type Settings, type WsmMessage, type WsmResponse } from '@core/messages';
 import { verifyEntitlement, type Entitlement, type Tier } from '@core/entitlement';
 import { applyTierConstraints, isFeatureAvailable, lockToastMessage } from '@core/featureGate';
 import { applyOverride, bumpStatsForTier, loadAdminConfig } from '@core/adminConfig';
@@ -66,38 +66,47 @@ async function bootstrap(): Promise<void> {
   w.__WEB_SCROLL_MAP_LOADED__ = true;
 
   const browserApi = getBrowserApi();
-  let settings: Settings = await loadSettings(browserApi.storage.local);
-
-  // Entitlement 로드 (native 연결 안 되면 free). Device ID는 storage.local에 고정 저장.
+  // P1: 3개 독립 I/O(settings, deviceId record, adminConfig)를 병렬화 + entitlement도 동시 요청.
+  // 기존 순차 await 체인(~30ms) → Promise.all (~10ms 추정).
   const DEVICE_KEY = 'wsm:device-id:v1';
+  const now = Date.now();
+  // 모든 I/O에 .catch 적용 — 하나가 throw해도 bootstrap 전체 실패 방지.
+  const [settingsLoaded, deviceRec, adminConfig, entitlementRaw] = await Promise.all([
+    loadSettings(browserApi.storage.local).catch(() => ({ ...DEFAULT_SETTINGS })),
+    browserApi.storage.local.get(DEVICE_KEY).catch(() => ({} as Record<string, unknown>)),
+    loadAdminConfig(browserApi.storage.local, now).catch(() => ({
+      override: 'auto' as const,
+      stats: { year: new Date(now).getFullYear(), month: new Date(now).getMonth() + 1, freeCount: 0, proCount: 0, lastSessionTier: null, lastSessionAt: 0 },
+      adminEnabled: false,
+    })),
+    fetchEntitlement().catch(() => null),
+  ]);
+  let settings: Settings = settingsLoaded;
+
   let deviceId: string;
-  try {
-    const rec = await browserApi.storage.local.get(DEVICE_KEY);
-    const existing = rec[DEVICE_KEY] as string | undefined;
-    if (existing) deviceId = existing;
-    else {
-      deviceId = Math.random().toString(36).slice(2) + '-' + Date.now().toString(36);
-      await browserApi.storage.local.set({ [DEVICE_KEY]: deviceId });
-    }
-  } catch {
-    deviceId = 'anon';
+  const existing = (deviceRec as Record<string, unknown>)[DEVICE_KEY] as string | undefined;
+  if (existing) {
+    deviceId = existing;
+  } else {
+    // 128-bit crypto 랜덤 (Math.random 36bit → 충돌/예측 저항 대폭 강화)
+    const buf = new Uint8Array(16);
+    crypto.getRandomValues(buf);
+    deviceId = Array.from(buf, (b) => b.toString(16).padStart(2, '0')).join('');
+    browserApi.storage.local.set({ [DEVICE_KEY]: deviceId }).catch(() => {});
   }
 
-  let entitlement: Entitlement | null = null;
+  let entitlement: Entitlement | null = entitlementRaw;
   let realTier: Tier = 'free';
   try {
-    entitlement = await fetchEntitlement();
-    realTier = verifyEntitlement(entitlement, Date.now(), deviceId);
+    realTier = verifyEntitlement(entitlement, now, deviceId);
   } catch {
     realTier = 'free';
   }
 
-  // Admin override 로드 → 실제 tier 결정
-  const adminConfig = await loadAdminConfig(browserApi.storage.local, Date.now());
   let tier: Tier = applyOverride(adminConfig.override, realTier);
 
-  // bootstrap 1회 통계 bump
-  await bumpStatsForTier(browserApi.storage.local, tier, Date.now()).catch(() => {});
+  // bootstrap 1회 통계 bump (병렬 — 부팅 차단 안 함)
+  void bumpStatsForTier(browserApi.storage.local, tier, now).catch(() => {});
 
   // Free tier는 settings 강제 제약 (우측/큰 여백/테마/필터 모두 차단)
   settings = applyTierConstraints(tier, settings);
@@ -165,8 +174,9 @@ async function bootstrap(): Promise<void> {
     upgradeToast.show(lockToastMessage(feature));
   }
 
-  // 검색 인덱스는 최초 스캔 시점에 지연 빌드.
+  // 검색 인덱스는 지연 빌드 + idle 선빌드. 첫 검색 패널 오픈 시 5~15ms freeze 예방.
   let searchCache: ReadonlyArray<SearchIndexEntry> | null = null;
+  let idleBuildScheduled = false;
   function ensureSearchIndex(): ReadonlyArray<SearchIndexEntry> {
     if (searchCache) return searchCache;
     searchCache = buildSearchIndex(currentScanRoot());
@@ -174,6 +184,19 @@ async function bootstrap(): Promise<void> {
   }
   function invalidateSearchIndex() {
     searchCache = null;
+    idleBuildScheduled = false;
+  }
+  function scheduleIdleSearchBuild() {
+    if (searchCache || idleBuildScheduled) return;
+    idleBuildScheduled = true;
+    const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => number }).requestIdleCallback;
+    const run = () => {
+      if (searchCache) return; // 이미 ensureSearchIndex로 빌드됨
+      if (document.hidden) { idleBuildScheduled = false; return; } // 배터리: hidden 시 미빌드
+      searchCache = buildSearchIndex(currentScanRoot());
+    };
+    if (typeof ric === 'function') ric(run, { timeout: 3000 });
+    else setTimeout(run, 1500); // iOS Safari 미지원 fallback
   }
 
   const searchPanel = createSearchPanel(host.root, colorScheme, {
@@ -183,7 +206,8 @@ async function bootstrap(): Promise<void> {
     onClose: () => renderer.setSearchHits([]),
   });
 
-  const signedStorage = createSignedStorage(window.sessionStorage, { version: 1 });
+  // v2: 64bit 합성 서명 도입. 이전 v1 레코드는 자동 파기 → 세션 단위라 영향 미미.
+  const signedStorage = createSignedStorage(window.sessionStorage, { version: 2 });
   const pinStore = createPinStore(signedStorage, location.pathname, deps.random);
   const trailStore = createTrailStore(signedStorage, location.pathname);
 
@@ -214,6 +238,8 @@ async function bootstrap(): Promise<void> {
 
   let lastResult = scanWithFilter();
   renderer.update(lastResult);
+  // Pro 검색 사용자 대비 — idle에 미리 빌드 (첫 검색 시 freeze 제거)
+  if (isFeatureAvailable(tier, 'search')) scheduleIdleSearchBuild();
   if (isFeatureAvailable(tier, 'pin-jump')) renderer.setPins(pinStore.list());
   if (isFeatureAvailable(tier, 'trail')) renderer.setTrail(trailStore.list());
   if (isFeatureAvailable(tier, 'floating-panel'))
@@ -236,6 +262,7 @@ async function bootstrap(): Promise<void> {
 
   function sampleTrail() {
     if (!isFeatureAvailable(tier, 'trail')) return;
+    if (document.hidden) return; // Page Visibility: 숨김 상태 샘플링 스킵
     const nowMs = performance.now();
     if (nowMs - lastTrailSampleAt < TRAIL_SAMPLE_MS) return;
     lastTrailSampleAt = nowMs;
@@ -247,6 +274,8 @@ async function bootstrap(): Promise<void> {
   }
 
   function onScroll() {
+    // Page Visibility: 탭 숨김 시 rAF 스킵 — 배터리 절감 (iOS 장시간 독서 경감 주효과)
+    if (document.hidden) return;
     if (scrollTicking) return;
     scrollTicking = true;
     requestAnimationFrame(() => {
@@ -281,6 +310,12 @@ async function bootstrap(): Promise<void> {
     tier = applyOverride(override, realTier);
     settings = applyTierConstraints(tier, settings);
     applyPositionStyle();
+    // Free로 강등 시 side가 'left'로 바뀔 수 있음 — renderer/UI 방향도 동기화.
+    renderer.setSide(settings.side);
+    magnifier.setSide(settings.side);
+    sectionBadge.setSide(settings.side);
+    floatingPins.setSide(settings.side);
+    floatingPins.setOpacity(settings.floatingOpacity);
     renderer.setPalette(paletteForTheme(colorScheme, settings.theme));
     lastResult = scanWithFilter();
     renderer.update(lastResult);
@@ -456,15 +491,22 @@ async function bootstrap(): Promise<void> {
       case 'entitlement-changed': {
         entitlement = msg.entitlement;
         realTier = msg.tier;
-        applyTierRefresh();
-        sendResponse({ ok: true } satisfies WsmResponse);
-        return false;
+        // async — await 후 응답해야 다음 메시지와 레이스 방지. 예외 시에도 응답 보장.
+        applyTierRefresh()
+          .then(() => sendResponse({ ok: true } satisfies WsmResponse))
+          .catch((e: unknown) =>
+            sendResponse({ ok: false, error: String(e) } satisfies WsmResponse),
+          );
+        return true;
       }
       case 'admin-override-changed': {
         // admin 설정 변경 → tier 재평가. entitlement는 유지.
-        applyTierRefresh();
-        sendResponse({ ok: true } satisfies WsmResponse);
-        return false;
+        applyTierRefresh()
+          .then(() => sendResponse({ ok: true } satisfies WsmResponse))
+          .catch((e: unknown) =>
+            sendResponse({ ok: false, error: String(e) } satisfies WsmResponse),
+          );
+        return true;
       }
       case 'clear-pins': {
         pinStore.clear();
@@ -539,6 +581,20 @@ async function bootstrap(): Promise<void> {
   const onResize = () => reevaluateActivation();
   window.addEventListener('resize', onResize, { passive: true });
 
+  // Page Visibility: 탭 재노출 시 전체 재동기화 — hidden 중 DOM 변경/스크롤 반영.
+  // observerBus가 hidden 동안 mutation callback을 스킵했으므로 수동 재스캔 필수.
+  const onVisibilityChange = () => {
+    if (!document.hidden) {
+      lastResult = scanWithFilter();
+      renderer.update(lastResult);
+      renderer.highlight('slim', vp());
+      if (isFeatureAvailable(tier, 'section-badge')) {
+        sectionBadge.update(container.getScrollY(), lastResult.anchors);
+      }
+    }
+  };
+  document.addEventListener('visibilitychange', onVisibilityChange);
+
   const disposables: Disposable[] = [scrubber, muteDisposable, spaDisposable, vvDisposable, searchPanel, sectionBadge, floatingPins, upgradeToast];
   let tornDown = false;
   function teardown() {
@@ -546,6 +602,7 @@ async function bootstrap(): Promise<void> {
     tornDown = true;
     scrollTarget.removeEventListener('scroll', onScroll as EventListener);
     document.removeEventListener('keydown', onGlobalKey);
+    document.removeEventListener('visibilitychange', onVisibilityChange);
     window.removeEventListener('resize', onResize);
     if (badgeHideTimer !== null) clearTimeout(badgeHideTimer);
     activePicker?.dispose();

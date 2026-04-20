@@ -6,6 +6,9 @@
   "upgradeCTA": { "message": "アップグレード" },
   "restorePurchases": { "message": "購入を復元" },
   "barWidth": { "message": "バーの太さ" },
+  "barWidthThin": { "message": "細い" },
+  "barWidthMedium": { "message": "標準" },
+  "barWidthThick": { "message": "太い" },
   "smartFilter": { "message": "フィルター" },
   "filterAll": { "message": "全て" },
   "filterHeadings": { "message": "見出し" },
@@ -32,5 +35,17 @@
   "clearPins": { "message": "ピンを削除" },
   "clearTrail": { "message": "軌跡を削除" },
   "helpHint": { "message": "バー長押し=現在位置を保存 · ピンをタップ=復帰 · ダブルタップ=検索" },
-  "permissionReason": { "message": "ページ構造を読み取りミニマップを描画するために必要です。" }
+  "permissionReason": { "message": "ページ構造を読み取りミニマップを描画するために必要です。" },
+  "purchaseInProgress": { "message": "購入処理中…" },
+  "restoreInProgress": { "message": "購入を復元中…" },
+  "proActivated": { "message": "Pro 有効化完了" },
+  "proRestored": { "message": "Pro 復元完了" },
+  "restoreNone": { "message": "復元する購入履歴なし" },
+  "proLockedHint": { "message": "Pro 専用 — アップグレードで解除" },
+  "purchaseErrProductNotAvailable": { "message": "App Store に未登録です。管理者モードでテストしてください。" },
+  "purchaseErrUserCancelled": { "message": "購入がキャンセルされました" },
+  "purchaseErrPending": { "message": "購入保留中 (Ask to Buy 等)" },
+  "purchaseErrVerificationFailed": { "message": "購入の検証に失敗しました" },
+  "purchaseErrNativeUnavailable": { "message": "ネイティブアプリ未接続 — ホストアプリ再起動" },
+  "purchaseErrGeneric": { "message": "購入失敗" }
 }

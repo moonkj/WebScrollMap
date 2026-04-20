@@ -18,6 +18,150 @@ describe('isWsmMessage', () => {
     expect(isWsmMessage({})).toBe(false);
     expect(isWsmMessage({ foo: 'bar' })).toBe(false);
   });
+
+  it('rejects unknown message type', () => {
+    expect(isWsmMessage({ type: 'something-else' })).toBe(false);
+  });
+
+  it('rejects non-string type field', () => {
+    expect(isWsmMessage({ type: 42 })).toBe(false);
+    expect(isWsmMessage({ type: null })).toBe(false);
+  });
+
+  describe('set-settings payload', () => {
+    it('accepts object settings', () => {
+      expect(isWsmMessage({ type: 'set-settings', settings: { enabled: true } })).toBe(true);
+    });
+    it('rejects non-object settings', () => {
+      expect(isWsmMessage({ type: 'set-settings' })).toBe(false);
+      expect(isWsmMessage({ type: 'set-settings', settings: null })).toBe(false);
+      expect(isWsmMessage({ type: 'set-settings', settings: 'bad' })).toBe(false);
+    });
+  });
+
+  describe('jump-to-pin / delete-pin pinId', () => {
+    it('accepts reasonable id', () => {
+      expect(isWsmMessage({ type: 'jump-to-pin', pinId: 'pin-1' })).toBe(true);
+      expect(isWsmMessage({ type: 'delete-pin', pinId: 'x' })).toBe(true);
+    });
+    it('rejects empty pinId', () => {
+      expect(isWsmMessage({ type: 'jump-to-pin', pinId: '' })).toBe(false);
+      expect(isWsmMessage({ type: 'delete-pin', pinId: '' })).toBe(false);
+    });
+    it('rejects pinId >= 128 chars', () => {
+      const huge = 'a'.repeat(128);
+      expect(isWsmMessage({ type: 'jump-to-pin', pinId: huge })).toBe(false);
+      expect(isWsmMessage({ type: 'delete-pin', pinId: huge })).toBe(false);
+    });
+    it('accepts pinId up to 127 chars', () => {
+      const ok = 'a'.repeat(127);
+      expect(isWsmMessage({ type: 'jump-to-pin', pinId: ok })).toBe(true);
+    });
+    it('rejects non-string pinId', () => {
+      expect(isWsmMessage({ type: 'jump-to-pin', pinId: 42 })).toBe(false);
+      expect(isWsmMessage({ type: 'delete-pin' })).toBe(false);
+    });
+  });
+
+  describe('set-admin-override values', () => {
+    it('accepts the three valid overrides', () => {
+      expect(isWsmMessage({ type: 'set-admin-override', override: 'auto' })).toBe(true);
+      expect(isWsmMessage({ type: 'set-admin-override', override: 'force-free' })).toBe(true);
+      expect(isWsmMessage({ type: 'set-admin-override', override: 'force-pro' })).toBe(true);
+    });
+    it('rejects invalid override values', () => {
+      expect(isWsmMessage({ type: 'set-admin-override', override: 'bogus' })).toBe(false);
+      expect(isWsmMessage({ type: 'set-admin-override' })).toBe(false);
+      expect(isWsmMessage({ type: 'set-admin-override', override: null })).toBe(false);
+    });
+  });
+
+  describe('set-admin-enabled enabled', () => {
+    it('accepts true and false', () => {
+      expect(isWsmMessage({ type: 'set-admin-enabled', enabled: true })).toBe(true);
+      expect(isWsmMessage({ type: 'set-admin-enabled', enabled: false })).toBe(true);
+    });
+    it('rejects non-boolean enabled', () => {
+      expect(isWsmMessage({ type: 'set-admin-enabled', enabled: 'yes' })).toBe(false);
+      expect(isWsmMessage({ type: 'set-admin-enabled', enabled: 1 })).toBe(false);
+      expect(isWsmMessage({ type: 'set-admin-enabled' })).toBe(false);
+    });
+  });
+
+  describe('haptic kind', () => {
+    it('accepts snap, pin, edge', () => {
+      expect(isWsmMessage({ type: 'haptic', kind: 'snap' })).toBe(true);
+      expect(isWsmMessage({ type: 'haptic', kind: 'pin' })).toBe(true);
+      expect(isWsmMessage({ type: 'haptic', kind: 'edge' })).toBe(true);
+    });
+    it('rejects unknown kind', () => {
+      expect(isWsmMessage({ type: 'haptic', kind: 'boom' })).toBe(false);
+      expect(isWsmMessage({ type: 'haptic' })).toBe(false);
+    });
+  });
+
+  describe('settings-changed payload', () => {
+    it('accepts object settings', () => {
+      expect(isWsmMessage({ type: 'settings-changed', settings: {} })).toBe(true);
+    });
+    it('rejects null/missing settings', () => {
+      expect(isWsmMessage({ type: 'settings-changed' })).toBe(false);
+      expect(isWsmMessage({ type: 'settings-changed', settings: null })).toBe(false);
+    });
+  });
+
+  describe('entitlement-changed payload', () => {
+    it('accepts null entitlement with tier free', () => {
+      expect(
+        isWsmMessage({ type: 'entitlement-changed', entitlement: null, tier: 'free' }),
+      ).toBe(true);
+    });
+    it('accepts valid entitlement object with required fields', () => {
+      expect(
+        isWsmMessage({
+          type: 'entitlement-changed',
+          entitlement: { tier: 'pro', deviceId: 'abc', validUntil: 123, signature: 'deadbeef-cafe' },
+          tier: 'pro',
+        }),
+      ).toBe(true);
+    });
+    it('rejects entitlement object missing required fields (S6 hardening)', () => {
+      expect(
+        isWsmMessage({ type: 'entitlement-changed', entitlement: {}, tier: 'pro' }),
+      ).toBe(false);
+    });
+    it('rejects invalid tier', () => {
+      expect(
+        isWsmMessage({ type: 'entitlement-changed', entitlement: null, tier: 'premium' }),
+      ).toBe(false);
+    });
+    it('rejects non-object, non-null entitlement', () => {
+      expect(
+        isWsmMessage({ type: 'entitlement-changed', entitlement: 'string', tier: 'free' }),
+      ).toBe(false);
+    });
+  });
+
+  describe('payload-less messages', () => {
+    it('accepts all no-payload variants', () => {
+      const noPayload = [
+        'get-settings',
+        'get-status',
+        'clear-pins',
+        'clear-trail',
+        'get-pins',
+        'get-entitlement',
+        'purchase-pro',
+        'restore-purchases',
+        'telemetry-flush',
+        'get-admin-config',
+        'reset-admin-stats',
+        'admin-override-changed',
+        'ping',
+      ];
+      for (const t of noPayload) expect(isWsmMessage({ type: t })).toBe(true);
+    });
+  });
 });
 
 describe('DEFAULT_SETTINGS', () => {

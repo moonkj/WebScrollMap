@@ -1,0 +1,86 @@
+{
+  "identifier" : "D4A8B2F1-C3E5-4A7B-9D6F-1E8C2A4B5D7E",
+  "nonRenewingSubscriptions" : [],
+  "products" : [
+    {
+      "displayPrice" : "0.99",
+      "familyShareable" : false,
+      "internalID" : "A1B2C3D4E5F6",
+      "localizations" : [
+        {
+          "description" : "Unlock all WebScrollMap features: Pin Drop, Search, Trail, Magnifier, Themes, Haptics, and custom layout.",
+          "displayName" : "WebScrollMap Pro",
+          "locale" : "en_US"
+        },
+        {
+          "description" : "핀 드롭, 검색, 트레일, 매그니파이어, 테마, 햅틱, 커스텀 레이아웃을 모두 해제합니다.",
+          "displayName" : "WebScrollMap Pro",
+          "locale" : "ko_KR"
+        }
+      ],
+      "productID" : "com.kjmoon.WebScrollMap.Pro",
+      "referenceName" : "WebScrollMap Pro",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "",
+    "_developerTeamID" : "",
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 0,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Load Products"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Purchase"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Verification"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Store Sync"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Subscription Status"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Transaction"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Manage Subscriptions Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Refund Request Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Offer Code Redeem Sheet"
+      }
+    ]
+  },
+  "subscriptionGroups" : [],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

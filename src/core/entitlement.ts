@@ -4,7 +4,7 @@
 //
 // 크래킹은 uBlock/Dark Reader 수준에서 발생하지만, 95% 정직 사용자 커버가 목표.
 
-import { djb2 } from './hash';
+import { sign64 } from './hash';
 
 export type Tier = 'free' | 'pro';
 
@@ -16,16 +16,16 @@ export interface Entitlement {
   validUntil: number;
   /** 디바이스 고정 식별자 (native에서 생성). 다른 기기 토큰 재사용 방지. */
   deviceId: string;
-  /** 위 필드 전체의 HMAC-like 서명 (djb2 기반, Permissive 방침). */
-  signature: number;
+  /** 64bit 합성 서명 (djb2+fnv1a). 클라 전용 — server receipt 검증이 근본 해법. */
+  signature: string;
 }
 
 const SALT = 0x7e_b3_c4_d5;
 const GRACE_MS = 14 * 24 * 60 * 60 * 1000; // 14일 오프라인 허용
 
-function signEntitlement(e: Omit<Entitlement, 'signature'>): number {
+function signEntitlement(e: Omit<Entitlement, 'signature'>): string {
   const body = `${e.tier}|${e.purchasedAt ?? 0}|${e.validUntil}|${e.deviceId}`;
-  return djb2(`${SALT}:${body}`);
+  return sign64(body, SALT);
 }
 
 export function createFreeEntitlement(deviceId: string, now: number): Entitlement {

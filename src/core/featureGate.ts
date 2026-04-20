@@ -28,12 +28,12 @@ export function isFeatureAvailable(tier: Tier, feature: ProFeature): boolean {
   return false;
 }
 
-/** Free 사용자용으로 settings를 강제 제약. Pro가 아니면 오른쪽/마진/폭/투명도/필터/테마 전부 기본값 강제. */
+/** Free 사용자용으로 settings를 강제 제약. Pro가 아니면 우측/기본 마진/폭/투명도/필터/테마 강제. */
 export function applyTierConstraints(tier: Tier, settings: Settings): Settings {
   if (tier === 'pro') return settings;
   return {
     ...settings,
-    side: 'left',
+    side: 'right',
     marginPx: 16,
     barWidthPx: 10,
     floatingOpacity: 100,

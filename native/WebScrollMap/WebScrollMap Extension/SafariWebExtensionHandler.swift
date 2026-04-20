@@ -28,6 +28,24 @@ private func djb2(_ str: String) -> UInt32 {
     return h
 }
 
+private func fnv1a(_ str: String) -> UInt32 {
+    var h: UInt32 = 0x811c9dc5
+    for u in str.unicodeScalars {
+        h ^= u.value
+        h = h &+ (h << 1) &+ (h << 4) &+ (h << 7) &+ (h << 8) &+ (h << 24)
+    }
+    return h
+}
+
+/// 64bit 합성 서명 — JS `sign64`와 동일 포맷. salt(UInt32) hex 문자열 사용.
+/// 8-char zero-padding으로 JS와 길이 일치 보장.
+private func sign64(_ body: String, salt: UInt32) -> String {
+    let s = String(format: "%08x", salt)
+    let a = djb2("\(s):\(body)")
+    let b = fnv1a("\(s)#\(body)")
+    return String(format: "%08x-%08x", a, b)
+}
+
 // MARK: - Entitlement Manager
 
 final class EntitlementManager {
@@ -54,10 +72,11 @@ final class EntitlementManager {
     }
 
     @available(iOS 15.0, macOS 12.0, *)
-    func purchase() async -> [String: Any] {
+    func purchase() async -> (entitlement: [String: Any], error: String?) {
         do {
-            guard let product = try await Product.products(for: [PRODUCT_ID]).first else {
-                return await currentEntitlement()
+            let products = try await Product.products(for: [PRODUCT_ID])
+            guard let product = products.first else {
+                return (await currentEntitlement(), "product-not-available")
             }
             let result = try await product.purchase()
             switch result {
@@ -65,16 +84,18 @@ final class EntitlementManager {
                 if case .verified(let transaction) = verification {
                     await transaction.finish()
                     let purchasedAt = Int64(transaction.originalPurchaseDate.timeIntervalSince1970 * 1000)
-                    return buildProEntitlement(purchasedAt: purchasedAt)
+                    return (buildProEntitlement(purchasedAt: purchasedAt), nil)
                 }
-                return await currentEntitlement()
-            case .userCancelled, .pending:
-                return await currentEntitlement()
+                return (await currentEntitlement(), "verification-failed")
+            case .userCancelled:
+                return (await currentEntitlement(), "user-cancelled")
+            case .pending:
+                return (await currentEntitlement(), "pending")
             @unknown default:
-                return await currentEntitlement()
+                return (await currentEntitlement(), "unknown-result")
             }
         } catch {
-            return await currentEntitlement()
+            return (await currentEntitlement(), "\(error)")
         }
     }
 
@@ -88,7 +109,7 @@ final class EntitlementManager {
         let now = Int64(Date().timeIntervalSince1970 * 1000)
         let dev = deviceId
         let body = "free|0|\(now)|\(dev)"
-        let sig = djb2("\(SALT):\(body)")
+        let sig = sign64(body, salt: SALT)
         return [
             "tier": "free",
             "purchasedAt": NSNull(),
@@ -103,7 +124,7 @@ final class EntitlementManager {
         let dev = deviceId
         let validUntil = now + GRACE_MS
         let body = "pro|\(purchasedAt)|\(validUntil)|\(dev)"
-        let sig = djb2("\(SALT):\(body)")
+        let sig = sign64(body, salt: SALT)
         return [
             "tier": "pro",
             "purchasedAt": purchasedAt,
@@ -120,38 +141,77 @@ final class HapticsManager {
     static let shared = HapticsManager()
     #if canImport(CoreHaptics)
     private var engine: CHHapticEngine?
+    private var lastUsedAt: Date = .distantPast
+    private var idleTimer: Timer?
+    // 8초 이상 haptic 미사용 시 engine 정지 — 배터리 절감. 다음 play()에서 재시작.
+    private let idleTimeoutSeconds: TimeInterval = 8
+
+    private let queue = DispatchQueue(label: "com.kjmoon.WebScrollMap.haptic")
 
     private init() {
         guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else { return }
         do {
             engine = try CHHapticEngine()
-            try engine?.start()
+            // stoppedHandler는 시스템 stop (오디오 세션 방해 등) 시 호출 — engine=nil로 완전 해제
+            // race 방지: queue 경유 직렬화.
+            engine?.stoppedHandler = { [weak self] _ in
+                self?.queue.async { self?.engine = nil }
+            }
+            // resetHandler는 서버 리셋 시 engine 재시작 시도. nil이면 no-op.
+            engine?.resetHandler = { [weak self] in
+                self?.queue.async {
+                    if let e = self?.engine { try? e.start() }
+                }
+            }
         } catch {
             engine = nil
         }
     }
 
     func play(kind: String) {
-        guard let engine = engine else { return }
-        let intensity: Float
-        let sharpness: Float
-        switch kind {
-        case "pin":   intensity = 0.8; sharpness = 0.6
-        case "snap":  intensity = 0.4; sharpness = 0.7
-        case "edge":  intensity = 0.25; sharpness = 0.4
-        default:      intensity = 0.4; sharpness = 0.5
+        // play 호출은 JS 쪽에서 고주파 가능성 — queue에서 엔진 접근 직렬화.
+        queue.async { [weak self] in
+            guard let self = self, let engine = self.engine else { return }
+            do { try engine.start() } catch { return }
+            self.lastUsedAt = Date()
+            self.scheduleIdleStopLocked()
+
+            let intensity: Float
+            let sharpness: Float
+            switch kind {
+            case "pin":   intensity = 0.8; sharpness = 0.6
+            case "snap":  intensity = 0.4; sharpness = 0.7
+            case "edge":  intensity = 0.25; sharpness = 0.4
+            default:      intensity = 0.4; sharpness = 0.5
+            }
+            let params: [CHHapticEventParameter] = [
+                CHHapticEventParameter(parameterID: .hapticIntensity, value: intensity),
+                CHHapticEventParameter(parameterID: .hapticSharpness, value: sharpness)
+            ]
+            let event = CHHapticEvent(eventType: .hapticTransient, parameters: params, relativeTime: 0)
+            do {
+                let pattern = try CHHapticPattern(events: [event], parameters: [])
+                let player = try engine.makePlayer(with: pattern)
+                try player.start(atTime: 0)
+            } catch {
+                // silent
+            }
         }
-        let params: [CHHapticEventParameter] = [
-            CHHapticEventParameter(parameterID: .hapticIntensity, value: intensity),
-            CHHapticEventParameter(parameterID: .hapticSharpness, value: sharpness)
-        ]
-        let event = CHHapticEvent(eventType: .hapticTransient, parameters: params, relativeTime: 0)
-        do {
-            let pattern = try CHHapticPattern(events: [event], parameters: [])
-            let player = try engine.makePlayer(with: pattern)
-            try player.start(atTime: 0)
-        } catch {
-            // silent
+    }
+
+    /// `queue` 내부에서만 호출. Timer는 main run loop에 예약.
+    private func scheduleIdleStopLocked() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.idleTimer?.invalidate()
+            self.idleTimer = Timer.scheduledTimer(withTimeInterval: self.idleTimeoutSeconds, repeats: false) { [weak self] _ in
+                guard let self = self else { return }
+                self.queue.async {
+                    if Date().timeIntervalSince(self.lastUsedAt) >= self.idleTimeoutSeconds {
+                        self.engine?.stop(completionHandler: nil)
+                    }
+                }
+            }
         }
     }
     #else
@@ -198,8 +258,12 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
             return ["ok": true, "entitlement": NSNull()]
         case "purchase-pro":
             if #available(iOS 15.0, macOS 12.0, *) {
-                let e = await EntitlementManager.shared.purchase()
-                return ["ok": true, "entitlement": e]
+                let r = await EntitlementManager.shared.purchase()
+                if let err = r.error {
+                    os_log(.default, "WSM purchase failed: %@", err)
+                    return ["ok": false, "error": err, "entitlement": r.entitlement]
+                }
+                return ["ok": true, "entitlement": r.entitlement]
             }
             return ["ok": false, "error": "unsupported platform"]
         case "restore-purchases":
