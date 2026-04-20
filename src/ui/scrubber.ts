@@ -39,12 +39,13 @@ function isTrackEvent(e: Event): boolean {
 
 // iOS 터치 좌표는 ±1~2px jitter가 있음. 긴 페이지(docH 20,000+)에서 이 노이즈가
 // 20배 증폭돼 "따닥따닥" 현상 발생. 아래 임계로 흡수.
-const JITTER_PX = 2;
+const JITTER_PX = 3;
 
 export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
   let ticking = false;
   let pendingY: number | null = null;
   let lastAppliedClientY = Number.NEGATIVE_INFINITY;
+  let lastAppliedScrollY = Number.NEGATIVE_INFINITY;
   let active = false;
   // Sev2 fix: layout thrash 방지. rect는 pointerdown 및 resize에서만 갱신.
   let cachedRect: { top: number; height: number } = { top: 0, height: 0 };
@@ -104,8 +105,12 @@ export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
       ticking = false;
       return;
     }
-    // 정수 픽셀로 반올림 → 브라우저 반올림 차이로 인한 왕복 제거
-    api.scrollTo(Math.round(pendingY));
+    const rounded = Math.round(pendingY);
+    // 같은 target 연속 scrollTo 생략 (iOS Safari scroll 이벤트 폭증 방지)
+    if (rounded !== lastAppliedScrollY) {
+      lastAppliedScrollY = rounded;
+      api.scrollTo(rounded);
+    }
     pendingY = null;
     ticking = false;
   }
@@ -134,6 +139,7 @@ export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
     longPressDownX = e.clientX;
     longPressDownY = e.clientY;
     lastAppliedClientY = Number.NEGATIVE_INFINITY; // 새 제스처는 jitter 필터 리셋
+    lastAppliedScrollY = Number.NEGATIVE_INFINITY;
     refreshRect();
     api.onStateChange?.('scrubbing');
     api.onMagnify?.(e.clientY, mapEventToY(e.clientY));

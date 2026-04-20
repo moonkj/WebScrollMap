@@ -29,7 +29,12 @@ export function windowTarget(win: Window = window, doc: Document = document): Co
     kind: 'window',
     el: null,
     getScrollY: () => win.scrollY,
-    setScrollY: (y) => win.scrollTo(0, y),
+    // scrollingElement.scrollTop 직접 할당: scrollTo(x,y)보다 iOS Safari 내부 스크롤과
+    // 덜 충돌. 연속 호출 시 깜빡임·따닥따닥 완화.
+    setScrollY: (y) => {
+      const el = scrollEl() as HTMLElement;
+      el.scrollTop = y;
+    },
     getHeight: () => win.innerHeight,
     getDocHeight: () => scrollEl().scrollHeight,
   };

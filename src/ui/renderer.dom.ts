@@ -83,8 +83,11 @@ export function createDomRenderer(root: ShadowRoot, opts: RendererOptions): Mini
     },
     highlight(_state: MinimapState, viewport: ViewportRect) {
       const style = computeIndicatorStyle(viewport);
-      indicator.style.top = `${style.topPct.toFixed(3)}%`;
-      indicator.style.height = `${style.heightPct.toFixed(3)}%`;
+      // toFixed(1)로 정밀도 낮춤 → 불필요한 DOM 변경 최소화 (깜빡임 완화)
+      const newTop = `${style.topPct.toFixed(1)}%`;
+      const newH = `${style.heightPct.toFixed(1)}%`;
+      if (indicator.style.top !== newTop) indicator.style.top = newTop;
+      if (indicator.style.height !== newH) indicator.style.height = newH;
       const docH = viewport.docHeight || docHeight || 1;
       const pct = docH > 0 ? viewport.scrollY / (docH - viewport.height || 1) : 0;
       container.setAttribute('aria-valuenow', String(Math.round(pct * 100)));
