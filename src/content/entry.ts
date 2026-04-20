@@ -50,23 +50,25 @@ async function bootstrap(): Promise<void> {
   const host = mountShadowHost(document, WSM_Z_INDEX, deps.random);
 
   // Settings → host 스타일 적용 (enabled/side/margin)
+  // !important로 호스트 페이지 CSS 승리 보장.
+  const SLIM_WIDTH_PX = 24;
   function applyPositionStyle() {
-    host.host.style.top = '0';
-    host.host.style.bottom = '';
-    host.host.style.display = settings.enabled ? '' : 'none';
+    const s = host.host.style;
+    s.setProperty('display', settings.enabled ? 'block' : 'none', 'important');
+    s.setProperty('width', `${SLIM_WIDTH_PX}px`, 'important');
     if (settings.side === 'right') {
-      host.host.style.right = `${settings.marginPx}px`;
-      host.host.style.left = '';
+      s.setProperty('right', `${settings.marginPx}px`, 'important');
+      s.setProperty('left', 'auto', 'important');
     } else {
-      host.host.style.left = `${settings.marginPx}px`;
-      host.host.style.right = '';
+      s.setProperty('left', `${settings.marginPx}px`, 'important');
+      s.setProperty('right', 'auto', 'important');
     }
   }
   applyPositionStyle();
 
   const colorScheme = detectTheme(document, window);
   const renderer = createRenderer(host.root, {
-    width: 48,
+    width: SLIM_WIDTH_PX,
     height: container.getHeight(),
     dpr: window.devicePixelRatio || 1,
     colorScheme,
@@ -157,6 +159,9 @@ async function bootstrap(): Promise<void> {
       if (added) renderer.setPins(pinStore.list());
     },
     onStateChange: (state) => {
+      // 슬림 ↔ 확장 전환: shadow host 클래스로 CSS opacity 전환 (폭은 유지, UX는 투명도로 표현)
+      if (state === 'scrubbing') host.host.classList.add('wsm-expanded');
+      else host.host.classList.remove('wsm-expanded');
       if (state === 'idle') magnifier.hide();
     },
     onMagnify: (clientY, docY) => magnifier.show(clientY, docY, lastResult),
