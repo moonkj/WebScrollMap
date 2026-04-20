@@ -2,6 +2,12 @@
 
 import { isWsmMessage, type WsmMessage, type WsmResponse } from '@core/messages';
 import { loadSettings, saveSettings } from '@core/settings';
+import {
+  loadAdminConfig,
+  saveOverride,
+  saveEnabled,
+  resetStats,
+} from '@core/adminConfig';
 import { getBrowserApi } from '@platform/browserApi';
 
 const api = getBrowserApi();
@@ -49,6 +55,41 @@ api.runtime.onMessage.addListener((raw, _sender, sendResponse) => {
     case 'ping': {
       sendResponse({ ok: true } satisfies WsmResponse);
       return false;
+    }
+    case 'get-admin-config': {
+      loadAdminConfig(api.storage.local, Date.now())
+        .then((adminConfig) => sendResponse({ ok: true, adminConfig } satisfies WsmResponse))
+        .catch((e) => sendResponse({ ok: false, error: String(e) } satisfies WsmResponse));
+      return true;
+    }
+    case 'set-admin-override': {
+      saveOverride(api.storage.local, msg.override)
+        .then(async () => {
+          // 모든 탭에 override 변경 알림 → 탭 재평가
+          if (api.tabs) {
+            const tabs = await api.tabs.query({});
+            for (const t of tabs) {
+              if (typeof t.id === 'number') {
+                api.tabs.sendMessage(t.id, { type: 'admin-override-changed' }).catch(() => {});
+              }
+            }
+          }
+          sendResponse({ ok: true } satisfies WsmResponse);
+        })
+        .catch((e) => sendResponse({ ok: false, error: String(e) } satisfies WsmResponse));
+      return true;
+    }
+    case 'set-admin-enabled': {
+      saveEnabled(api.storage.local, msg.enabled)
+        .then(() => sendResponse({ ok: true } satisfies WsmResponse))
+        .catch((e) => sendResponse({ ok: false, error: String(e) } satisfies WsmResponse));
+      return true;
+    }
+    case 'reset-admin-stats': {
+      resetStats(api.storage.local, Date.now())
+        .then(() => sendResponse({ ok: true } satisfies WsmResponse))
+        .catch((e) => sendResponse({ ok: false, error: String(e) } satisfies WsmResponse));
+      return true;
     }
     case 'get-entitlement':
     case 'purchase-pro':

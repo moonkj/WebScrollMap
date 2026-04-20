@@ -45,6 +45,7 @@ export interface PinSummary {
 }
 
 import type { Entitlement, Tier } from './entitlement';
+import type { AdminConfig } from './adminConfig';
 
 export type WsmMessage =
   | { type: 'get-settings' }
@@ -62,6 +63,11 @@ export type WsmMessage =
   | { type: 'entitlement-changed'; entitlement: Entitlement | null; tier: Tier }
   | { type: 'haptic'; kind: 'snap' | 'pin' | 'edge' }
   | { type: 'telemetry-flush' }
+  | { type: 'get-admin-config' }
+  | { type: 'set-admin-override'; override: 'auto' | 'force-free' | 'force-pro' }
+  | { type: 'set-admin-enabled'; enabled: boolean }
+  | { type: 'reset-admin-stats' }
+  | { type: 'admin-override-changed' } // content script re-evaluate tier
   | { type: 'ping' };
 
 export type WsmResponse =
@@ -72,6 +78,7 @@ export type WsmResponse =
       pins?: PinSummary[];
       entitlement?: Entitlement | null;
       tier?: Tier;
+      adminConfig?: AdminConfig;
     }
   | { ok: false; error: string };
 

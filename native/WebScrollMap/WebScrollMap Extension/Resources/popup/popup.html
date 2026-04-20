@@ -118,6 +118,37 @@
       <button type="button" class="wsm-link-btn" id="restore-btn" data-i18n="restorePurchases">Restore purchases</button>
     </footer>
 
+    <section class="wsm-admin" id="admin-panel" hidden>
+      <div class="wsm-admin-title" data-i18n="adminTitle">Admin</div>
+      <div class="wsm-row">
+        <div class="wsm-label" data-i18n="adminOverride">Tier override</div>
+        <div class="wsm-seg wsm-seg-narrow" role="radiogroup" aria-label="Admin override">
+          <button type="button" data-override="auto" data-i18n="adminAuto">Auto</button>
+          <button type="button" data-override="force-free" data-i18n="adminForceFree">Free</button>
+          <button type="button" data-override="force-pro" data-i18n="adminForcePro">Pro</button>
+        </div>
+      </div>
+      <div class="wsm-admin-stats">
+        <div class="wsm-admin-stat">
+          <div class="wsm-admin-stat-label" data-i18n="adminMonth">This month</div>
+          <div class="wsm-admin-stat-num" id="admin-month"></div>
+        </div>
+        <div class="wsm-admin-stat">
+          <div class="wsm-admin-stat-label" data-i18n="adminFreeCount">Free</div>
+          <div class="wsm-admin-stat-num" id="admin-free-count">0</div>
+        </div>
+        <div class="wsm-admin-stat">
+          <div class="wsm-admin-stat-label" data-i18n="adminProCount">Pro</div>
+          <div class="wsm-admin-stat-num" id="admin-pro-count">0</div>
+        </div>
+      </div>
+      <button type="button" class="wsm-admin-reset" id="admin-reset" data-i18n="adminReset">Reset stats</button>
+    </section>
+
+    <div class="wsm-version-bar">
+      <span class="wsm-version" id="version-tap">v<span id="version-text">0.2.0</span></span>
+    </div>
+
     <script src="/dist/popup.js"></script>
   </body>
 </html>

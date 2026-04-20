@@ -9,6 +9,12 @@ import {
 } from '@core/messages';
 import { getBrowserApi } from '@platform/browserApi';
 import type { Tier, Entitlement } from '@core/entitlement';
+import type { AdminConfig, AdminOverride } from '@core/adminConfig';
+import { applyOverride } from '@core/adminConfig';
+
+const EXTENSION_VERSION = '0.3.0';
+const UNLOCK_CLICK_COUNT = 5;
+const UNLOCK_WINDOW_MS = 3000;
 
 const api = getBrowserApi();
 
@@ -79,6 +85,32 @@ async function restorePurchases(): Promise<Tier> {
     if (r.ok) return r.tier ?? 'free';
   } catch {}
   return 'free';
+}
+
+async function fetchAdminConfig(): Promise<AdminConfig | null> {
+  try {
+    const r = (await api.runtime.sendMessage({ type: 'get-admin-config' })) as WsmResponse;
+    if (r.ok && r.adminConfig) return r.adminConfig;
+  } catch {}
+  return null;
+}
+
+async function setOverride(override: AdminOverride): Promise<void> {
+  try {
+    await api.runtime.sendMessage({ type: 'set-admin-override', override });
+  } catch {}
+}
+
+async function setAdminEnabled(enabled: boolean): Promise<void> {
+  try {
+    await api.runtime.sendMessage({ type: 'set-admin-enabled', enabled });
+  } catch {}
+}
+
+async function resetAdminStats(): Promise<void> {
+  try {
+    await api.runtime.sendMessage({ type: 'reset-admin-stats' });
+  } catch {}
 }
 
 async function fetchPins(): Promise<PinSummary[]> {
@@ -205,14 +237,63 @@ function renderPins(pins: ReadonlyArray<PinSummary>, refresh: () => Promise<void
   });
 }
 
+function applyAdminUI(admin: AdminConfig | null) {
+  const panel = document.getElementById('admin-panel');
+  if (!panel) return;
+  panel.hidden = !admin?.adminEnabled;
+  if (!admin?.adminEnabled) return;
+  // override seg pressed state
+  document.querySelectorAll<HTMLButtonElement>('[data-override]').forEach((b) => {
+    b.setAttribute('aria-pressed', b.dataset.override === admin.override ? 'true' : 'false');
+  });
+  // stats
+  const monthEl = document.getElementById('admin-month');
+  if (monthEl) monthEl.textContent = `${admin.stats.year}-${String(admin.stats.month).padStart(2, '0')}`;
+  const freeEl = document.getElementById('admin-free-count');
+  if (freeEl) freeEl.textContent = String(admin.stats.freeCount);
+  const proEl = document.getElementById('admin-pro-count');
+  if (proEl) proEl.textContent = String(admin.stats.proCount);
+}
+
 async function init() {
   applyI18n(document);
   let settings = await fetchSettings();
-  let { tier } = await fetchEntitlement();
+  const { tier: realTier } = await fetchEntitlement();
   const status = await fetchStatus();
+  let admin = await fetchAdminConfig();
+  let tier: Tier = applyOverride(admin?.override ?? 'auto', realTier);
   applyTierUI(tier);
   renderSettingsUI(settings);
   renderStatus(status);
+  applyAdminUI(admin);
+
+  // Version 표시
+  const versionText = document.getElementById('version-text');
+  if (versionText) versionText.textContent = EXTENSION_VERSION;
+
+  // 5-click unlock
+  const versionTap = document.getElementById('version-tap');
+  let clickCount = 0;
+  let firstClickAt = 0;
+  versionTap?.addEventListener('click', async () => {
+    const now = Date.now();
+    if (now - firstClickAt > UNLOCK_WINDOW_MS) {
+      clickCount = 0;
+      firstClickAt = now;
+    }
+    clickCount += 1;
+    if (clickCount >= UNLOCK_CLICK_COUNT) {
+      clickCount = 0;
+      const nextEnabled = !admin?.adminEnabled;
+      await setAdminEnabled(nextEnabled);
+      admin = await fetchAdminConfig();
+      applyAdminUI(admin);
+      versionTap.classList.add('wsm-unlocking');
+      setTimeout(() => versionTap.classList.remove('wsm-unlocking'), 600);
+    } else if (clickCount >= 3 && versionTap) {
+      versionTap.classList.add('wsm-unlocking');
+    }
+  });
 
   async function refreshPins() {
     const pins = await fetchPins();
@@ -311,6 +392,26 @@ async function init() {
     try {
       await api.runtime.sendMessage({ type: 'clear-trail' });
     } catch {}
+  });
+
+  // Admin override buttons
+  document.querySelectorAll<HTMLButtonElement>('[data-override]').forEach((b) =>
+    b.addEventListener('click', async () => {
+      const o = (b.dataset.override as AdminOverride) ?? 'auto';
+      await setOverride(o);
+      admin = await fetchAdminConfig();
+      applyAdminUI(admin);
+      tier = applyOverride(admin?.override ?? 'auto', realTier);
+      applyTierUI(tier);
+      if (tier === 'pro') await refreshPins();
+    }),
+  );
+
+  // Admin stats reset
+  document.getElementById('admin-reset')?.addEventListener('click', async () => {
+    await resetAdminStats();
+    admin = await fetchAdminConfig();
+    applyAdminUI(admin);
   });
 }
 

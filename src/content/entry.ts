@@ -22,6 +22,7 @@ import { fetchEntitlement, playHaptic } from '@platform/iapBridge';
 import { isWsmMessage, type PageStatus, type PinSummary, type Settings, type WsmMessage, type WsmResponse } from '@core/messages';
 import { verifyEntitlement, type Entitlement, type Tier } from '@core/entitlement';
 import { applyTierConstraints, isFeatureAvailable, lockToastMessage } from '@core/featureGate';
+import { applyOverride, bumpStatsForTier, loadAdminConfig } from '@core/adminConfig';
 import { applySmartFilter } from '@core/smartFilter';
 import { shouldActivate } from './shouldActivate';
 import { TUNING } from '@config/tuning';
@@ -58,13 +59,20 @@ async function bootstrap(): Promise<void> {
   }
 
   let entitlement: Entitlement | null = null;
-  let tier: Tier = 'free';
+  let realTier: Tier = 'free';
   try {
     entitlement = await fetchEntitlement();
-    tier = verifyEntitlement(entitlement, Date.now(), deviceId);
+    realTier = verifyEntitlement(entitlement, Date.now(), deviceId);
   } catch {
-    tier = 'free';
+    realTier = 'free';
   }
+
+  // Admin override 로드 → 실제 tier 결정
+  const adminConfig = await loadAdminConfig(browserApi.storage.local, Date.now());
+  let tier: Tier = applyOverride(adminConfig.override, realTier);
+
+  // bootstrap 1회 통계 bump
+  await bumpStatsForTier(browserApi.storage.local, tier, Date.now()).catch(() => {});
 
   // Free tier는 settings 강제 제약 (우측/큰 여백/테마/필터 모두 차단)
   settings = applyTierConstraints(tier, settings);
@@ -237,6 +245,28 @@ async function bootstrap(): Promise<void> {
     }
   }
 
+  // tier가 바뀌면 UI 전부 재평가 (entitlement-changed / admin-override-changed 공통 경로)
+  async function applyTierRefresh() {
+    const cfg = await loadAdminConfig(browserApi.storage.local, Date.now()).catch(() => null);
+    const override = cfg?.override ?? 'auto';
+    tier = applyOverride(override, realTier);
+    settings = applyTierConstraints(tier, settings);
+    applyPositionStyle();
+    renderer.setPalette(paletteForTheme(colorScheme, settings.theme));
+    lastResult = scanWithFilter();
+    renderer.update(lastResult);
+    if (isFeatureAvailable(tier, 'pin-jump')) renderer.setPins(pinStore.list());
+    else renderer.setPins([]);
+    if (isFeatureAvailable(tier, 'trail')) renderer.setTrail(trailStore.list());
+    else renderer.setTrail([]);
+    if (isFeatureAvailable(tier, 'floating-panel')) {
+      floatingPins.update(pinStore.list(), container.getDocHeight());
+    } else {
+      floatingPins.update([], container.getDocHeight());
+    }
+    renderer.highlight('slim', vp());
+  }
+
   const hostEl = host.host;
   const scrubber = createScrubber(hostEl, {
     scrollTo: (y) => container.setScrollY(y),
@@ -383,26 +413,15 @@ async function bootstrap(): Promise<void> {
         return false;
       }
       case 'entitlement-changed': {
-        // 네이티브 → 확장: tier 변경. 모든 게이트 재평가.
         entitlement = msg.entitlement;
-        tier = msg.tier;
-        // tier 상승(free→pro): 기존에 잠겨있던 pro 초기 상태들 활성화
-        // tier 하락(pro→free): UI 일부 숨김 (정교한 cleanup은 다음 사이클)
-        settings = applyTierConstraints(tier, settings);
-        applyPositionStyle();
-        renderer.setPalette(paletteForTheme(colorScheme, settings.theme));
-        lastResult = scanWithFilter();
-        renderer.update(lastResult);
-        if (isFeatureAvailable(tier, 'pin-jump')) renderer.setPins(pinStore.list());
-        else renderer.setPins([]);
-        if (isFeatureAvailable(tier, 'trail')) renderer.setTrail(trailStore.list());
-        else renderer.setTrail([]);
-        if (isFeatureAvailable(tier, 'floating-panel')) {
-          floatingPins.update(pinStore.list(), container.getDocHeight());
-        } else {
-          floatingPins.update([], container.getDocHeight());
-        }
-        renderer.highlight('slim', vp());
+        realTier = msg.tier;
+        applyTierRefresh();
+        sendResponse({ ok: true } satisfies WsmResponse);
+        return false;
+      }
+      case 'admin-override-changed': {
+        // admin 설정 변경 → tier 재평가. entitlement는 유지.
+        applyTierRefresh();
         sendResponse({ ok: true } satisfies WsmResponse);
         return false;
       }
