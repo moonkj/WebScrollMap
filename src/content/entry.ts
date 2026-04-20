@@ -15,7 +15,7 @@ import { createPinStore } from '@core/pins';
 import { createTrailStore } from '@core/trail';
 import { loadSettings } from '@core/settings';
 import { getBrowserApi } from '@platform/browserApi';
-import { isWsmMessage, type PageStatus, type Settings, type WsmMessage, type WsmResponse } from '@core/messages';
+import { isWsmMessage, type PageStatus, type PinSummary, type Settings, type WsmMessage, type WsmResponse } from '@core/messages';
 import { shouldActivate } from './shouldActivate';
 import { TUNING } from '@config/tuning';
 import type { ContainerTarget, Disposable, ViewportRect } from '@core/types';
@@ -78,9 +78,8 @@ async function bootstrap(): Promise<void> {
     colorScheme,
     side: settings.side,
     onPinTap: (pin) => {
-      // 핀 탭 → 해당 위치로 부드럽게 이동. 뷰포트 중앙에 오도록 보정.
-      const targetY = Math.max(0, pin.y - container.getHeight() / 3);
-      container.setScrollY(targetY);
+      // 핀 탭 → 저장된 정확한 스크롤 위치로 복귀 (오프셋 없음)
+      container.setScrollY(pin.y);
     },
   });
   renderer.mount();
@@ -177,8 +176,11 @@ async function bootstrap(): Promise<void> {
     snapCandidates: () => lastResult.anchors.map((a) => a.y),
     getDocHeight: () => container.getDocHeight(),
     getViewportHeight: () => container.getHeight(),
-    onLongPress: (y) => {
-      const added = pinStore.add({ y });
+    onLongPress: (_barY) => {
+      // 핀 = "여기가 중요해 — 여기로 돌아오고 싶어" → 현재 스크롤 위치를 북마크
+      // (바의 어느 위치를 눌렀는지는 무관 — 기준점은 "지금 보고 있는 곳")
+      const currentScroll = container.getScrollY();
+      const added = pinStore.add({ y: currentScroll });
       if (added) renderer.setPins(pinStore.list());
     },
     onStateChange: (state) => {
@@ -294,6 +296,29 @@ async function bootstrap(): Promise<void> {
       case 'clear-trail': {
         trailStore.clear();
         renderer.setTrail([]);
+        sendResponse({ ok: true } satisfies WsmResponse);
+        return false;
+      }
+      case 'get-pins': {
+        const docH = container.getDocHeight() || 1;
+        const pins: PinSummary[] = pinStore.list().map((p) => ({
+          id: p.id,
+          y: p.y,
+          pct: Math.round((p.y / docH) * 100),
+          ...(p.color ? { color: p.color } : {}),
+        }));
+        sendResponse({ ok: true, pins } satisfies WsmResponse);
+        return false;
+      }
+      case 'jump-to-pin': {
+        const found = pinStore.list().find((p) => p.id === msg.pinId);
+        if (found) container.setScrollY(found.y);
+        sendResponse({ ok: true } satisfies WsmResponse);
+        return false;
+      }
+      case 'delete-pin': {
+        pinStore.remove(msg.pinId);
+        renderer.setPins(pinStore.list());
         sendResponse({ ok: true } satisfies WsmResponse);
         return false;
       }

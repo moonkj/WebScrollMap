@@ -4,7 +4,7 @@
 import type { Pin } from './types';
 import type { Storage } from './storage';
 
-export const MAX_PINS = 3;
+export const MAX_PINS = 5;
 
 export interface PinStore {
   list(): ReadonlyArray<Pin>;

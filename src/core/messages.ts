@@ -25,6 +25,13 @@ export interface PageStatus {
   pinCount: number;
 }
 
+export interface PinSummary {
+  id: string;
+  y: number;
+  pct: number; // 0..100 (y / docHeight)
+  color?: string;
+}
+
 export type WsmMessage =
   | { type: 'get-settings' }
   | { type: 'set-settings'; settings: Partial<Settings> }
@@ -32,10 +39,13 @@ export type WsmMessage =
   | { type: 'settings-changed'; settings: Settings } // broadcast from background
   | { type: 'clear-pins' }
   | { type: 'clear-trail' }
+  | { type: 'get-pins' }
+  | { type: 'jump-to-pin'; pinId: string }
+  | { type: 'delete-pin'; pinId: string }
   | { type: 'ping' };
 
 export type WsmResponse =
-  | { ok: true; settings?: Settings; status?: PageStatus }
+  | { ok: true; settings?: Settings; status?: PageStatus; pins?: PinSummary[] }
   | { ok: false; error: string };
 
 export function isWsmMessage(x: unknown): x is WsmMessage {

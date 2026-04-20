@@ -6,8 +6,10 @@
   "sideLeft": { "message": "左" },
   "sideRight": { "message": "右" },
   "margin": { "message": "余白" },
+  "pinsLabel": { "message": "ピン" },
+  "pinsEmpty": { "message": "ピンなし — バーを長押しで現在位置を保存" },
   "clearPins": { "message": "ピンを削除" },
   "clearTrail": { "message": "軌跡を削除" },
-  "helpHint": { "message": "長押しでピン · ピンをタップでジャンプ · ダブルタップで検索" },
+  "helpHint": { "message": "バー長押し=現在位置を保存 · ピンをタップ=復帰 · ダブルタップ=検索" },
   "permissionReason": { "message": "ページ構造を読み取りミニマップを描画するために必要です。" }
 }

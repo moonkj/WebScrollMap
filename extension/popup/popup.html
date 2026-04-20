@@ -37,13 +37,19 @@
       </div>
     </section>
 
+    <section class="wsm-row wsm-pins-section">
+      <div class="wsm-label" data-i18n="pinsLabel">Pins</div>
+      <ul class="wsm-pins" id="pins-list"></ul>
+      <div class="wsm-empty" id="pins-empty" data-i18n="pinsEmpty">No pins yet — long-press the bar to save current position</div>
+    </section>
+
     <section class="wsm-row wsm-actions">
       <button type="button" id="clear-pins" data-i18n="clearPins">Clear Pins</button>
       <button type="button" id="clear-trail" data-i18n="clearTrail">Clear Trail</button>
     </section>
 
     <footer class="wsm-foot">
-      <span class="wsm-hint" data-i18n="helpHint">Long-press to drop a pin · Tap a pin to jump · Double-tap to search</span>
+      <span class="wsm-hint" data-i18n="helpHint">Long-press bar to bookmark current view · Tap pin to return · Double-tap for search</span>
     </footer>
 
     <script src="/dist/popup.js"></script>

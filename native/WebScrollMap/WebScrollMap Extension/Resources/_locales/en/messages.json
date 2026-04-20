@@ -6,8 +6,10 @@
   "sideLeft": { "message": "Left" },
   "sideRight": { "message": "Right" },
   "margin": { "message": "Margin" },
+  "pinsLabel": { "message": "Pins" },
+  "pinsEmpty": { "message": "No pins yet — long-press the bar to bookmark current view" },
   "clearPins": { "message": "Clear Pins" },
   "clearTrail": { "message": "Clear Trail" },
-  "helpHint": { "message": "Long-press to drop a pin · Tap a pin to jump · Double-tap to search" },
+  "helpHint": { "message": "Long-press bar = bookmark current view · Tap pin = return · Double-tap = search" },
   "permissionReason": { "message": "Access is required to read the page structure and draw the minimap." }
 }

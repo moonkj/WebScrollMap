@@ -1,6 +1,6 @@
 // Popup 스크립트. background runtime API로 settings 조회/변경.
 
-import { DEFAULT_SETTINGS, type Settings, type WsmResponse, type PageStatus } from '@core/messages';
+import { DEFAULT_SETTINGS, type Settings, type WsmResponse, type PageStatus, type PinSummary } from '@core/messages';
 import { getBrowserApi } from '@platform/browserApi';
 
 const api = getBrowserApi();
@@ -53,6 +53,84 @@ async function fetchStatus(): Promise<PageStatus | null> {
   return null;
 }
 
+async function fetchPins(): Promise<PinSummary[]> {
+  try {
+    const r = (await api.runtime.sendMessage({ type: 'get-pins' })) as WsmResponse;
+    if (r.ok && r.pins) return r.pins;
+  } catch {
+    // noop
+  }
+  return [];
+}
+
+async function jumpToPin(id: string): Promise<void> {
+  try {
+    await api.runtime.sendMessage({ type: 'jump-to-pin', pinId: id });
+  } catch {
+    // noop
+  }
+}
+
+async function deletePin(id: string): Promise<void> {
+  try {
+    await api.runtime.sendMessage({ type: 'delete-pin', pinId: id });
+  } catch {
+    // noop
+  }
+}
+
+function renderPins(pins: ReadonlyArray<PinSummary>, refresh: () => Promise<void>) {
+  const list = document.getElementById('pins-list') as HTMLUListElement | null;
+  const empty = document.getElementById('pins-empty');
+  if (!list) return;
+  list.textContent = '';
+  if (pins.length === 0) {
+    empty?.classList.add('wsm-visible');
+    return;
+  }
+  empty?.classList.remove('wsm-visible');
+  pins.forEach((p, i) => {
+    const li = document.createElement('li');
+    li.setAttribute('role', 'button');
+    li.tabIndex = 0;
+
+    const dot = document.createElement('span');
+    dot.className = 'wsm-pin-dot';
+    if (p.color) dot.style.background = p.color;
+
+    const info = document.createElement('span');
+    info.className = 'wsm-pin-info';
+    info.textContent = `#${i + 1} · ${p.pct}%`;
+
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'wsm-pin-delete';
+    del.textContent = '×';
+    del.setAttribute('aria-label', `Delete pin ${i + 1}`);
+    del.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await deletePin(p.id);
+      await refresh();
+    });
+
+    li.append(dot, info, del);
+    li.addEventListener('click', async () => {
+      await jumpToPin(p.id);
+      // 창 자동 닫기 (iOS Safari는 확장 popup 닫기 API 없음, 효과는 제한적)
+      window.close?.();
+    });
+    li.addEventListener('keydown', async (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        await jumpToPin(p.id);
+        window.close?.();
+      }
+    });
+
+    list.appendChild(li);
+  });
+}
+
 function render(settings: Settings, status: PageStatus | null) {
   const enabled = document.getElementById('enabled') as HTMLInputElement | null;
   if (enabled) enabled.checked = settings.enabled;
@@ -85,6 +163,12 @@ async function init() {
   let settings = await fetchSettings();
   const status = await fetchStatus();
   render(settings, status);
+
+  async function refreshPins() {
+    const pins = await fetchPins();
+    renderPins(pins, refreshPins);
+  }
+  await refreshPins();
 
   document.getElementById('enabled')?.addEventListener('change', async (e) => {
     const checked = (e.target as HTMLInputElement).checked;
@@ -121,6 +205,7 @@ async function init() {
   document.getElementById('clear-pins')?.addEventListener('click', async () => {
     try {
       await api.runtime.sendMessage({ type: 'clear-pins' });
+      await refreshPins();
     } catch {
       // silent
     }
