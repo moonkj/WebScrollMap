@@ -115,8 +115,29 @@ Architect 판단: 실기기 불필요한 영역 집중 처리.
 - 11 파일 53/53 통과 (신규: settings 5, messages 4)
 - Vite 3엔트리: content 21.91KB / background 2.39KB / popup 3.00KB
 
-### 다음 단계 (Phase 4)
+### [17] Phase 4 순수 코딩 배치 — 차별화 기능 + S7 블로커 + perf CI
+- `core/telemetry.ts` — opt-in 링 버퍼 (100 cap, off 즉시 파기)
+- `ui/magnifier.ts` — 스크럽 중 플로팅 프리뷰
+- `core/searchIndex.ts` + `ui/searchPanel.ts` — 자체 검색 (S7 해소)
+  - Cmd/Ctrl+Shift+F, editable 포커스 중 스킵
+  - 외부 클릭 자동 닫힘
+- `ui/renderer` 계약 확장: `setSearchHits` + 양 구현 glow 마커
+- Playwright WebKit perf 게이트 (`tests/perf/` + long-article fixture)
+
+### [18] Phase 4 Debugger 패스
+- Sev1: Cmd+Shift+F가 input/textarea/contentEditable에서 타이핑 방해 → isEditableTarget 가드
+- Sev1: searchIndex 5000 cap + 부모 offsetTop 미캐시 → 2000 cap + WeakMap 캐시
+- Sev2: SPA nav 시 magnifier 잔상 → hide() 호출
+- Sev2: searchPanel 외부 클릭 닫힘 누락 → composedPath pointerdown 리스너
+- Sev2: renderer.mount() 전 setSearchHits 호출 시 유실 → mount에서 재적용
+
+### [19] 테스트/빌드
+- 13 파일 64/64 통과 (신규 telemetry 5, searchIndex 5)
+- Vite 3엔트리: content 28.5KB / background 2.39KB / popup 3.00KB
+- Playwright perf 스펙 (WebKit) 스캐폴드 준비
+
+### 다음 단계 (Phase 5)
 - Xcode Safari App Extension 래퍼 구성 (실기기 필요)
-- 커스텀 검색 패널 (S7)
-- 텔레메트리 링 버퍼 (opt-in)
 - 아이콘 에셋 디자인
+- Playwright perf 게이트 CI 통합 + 카나리
+- TestFlight 대체 배포 (Developer ID)

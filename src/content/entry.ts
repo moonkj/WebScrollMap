@@ -2,6 +2,9 @@ import { createScanner, type ScannerDeps } from '@core/scanner';
 import { mountShadowHost } from '@ui/shadowHost';
 import { createRenderer } from '@ui/renderer';
 import { createScrubber } from '@ui/scrubber';
+import { createMagnifier } from '@ui/magnifier';
+import { createSearchPanel } from '@ui/searchPanel';
+import { buildSearchIndex, searchIndex, type SearchIndexEntry } from '@core/searchIndex';
 import { createObserverBus } from '@platform/observerBus';
 import { detectScrollContainer, elementTarget } from '@platform/container';
 import { createManualPicker } from '@platform/manualPicker';
@@ -61,13 +64,34 @@ async function bootstrap(): Promise<void> {
   }
   applyPositionStyle();
 
+  const colorScheme = detectTheme(document, window);
   const renderer = createRenderer(host.root, {
     width: 48,
     height: container.getHeight(),
     dpr: window.devicePixelRatio || 1,
-    colorScheme: detectTheme(document, window),
+    colorScheme,
   });
   renderer.mount();
+
+  const magnifier = createMagnifier(host.root, colorScheme, settings.side);
+
+  // 검색 인덱스는 최초 스캔 시점에 지연 빌드 (비용 큼). 첫 검색 시 1회 생성.
+  let searchCache: ReadonlyArray<SearchIndexEntry> | null = null;
+  function ensureSearchIndex(): ReadonlyArray<SearchIndexEntry> {
+    if (searchCache) return searchCache;
+    searchCache = buildSearchIndex(currentScanRoot());
+    return searchCache;
+  }
+  function invalidateSearchIndex() {
+    searchCache = null;
+  }
+
+  const searchPanel = createSearchPanel(host.root, colorScheme, {
+    search: (q) => searchIndex(ensureSearchIndex(), q),
+    onNavigate: (y) => container.setScrollY(Math.max(0, y - container.getHeight() / 3)),
+    onHitsChanged: (hits) => renderer.setSearchHits(hits.map((h) => ({ y: h.y }))),
+    onClose: () => renderer.setSearchHits([]),
+  });
 
   const signedStorage = createSignedStorage(window.sessionStorage, { version: 1 });
   const pinStore = createPinStore(signedStorage, location.pathname, deps.random);
@@ -132,6 +156,10 @@ async function bootstrap(): Promise<void> {
       const added = pinStore.add({ y });
       if (added) renderer.setPins(pinStore.list());
     },
+    onStateChange: (state) => {
+      if (state === 'idle') magnifier.hide();
+    },
+    onMagnify: (clientY, docY) => magnifier.show(clientY, docY, lastResult),
   });
 
   const bus = createObserverBus(document);
@@ -140,6 +168,7 @@ async function bootstrap(): Promise<void> {
       lastResult = scanner.scan(currentScanRoot());
       renderer.update(lastResult);
       renderer.highlight('slim', vp());
+      invalidateSearchIndex();
     },
     { debounceMs: TUNING.mutationDebounceMs },
   );
@@ -149,7 +178,11 @@ async function bootstrap(): Promise<void> {
     renderer.update(lastResult);
     renderer.setPins([]);
     renderer.setTrail([]);
+    renderer.setSearchHits([]);
     renderer.highlight('slim', vp());
+    invalidateSearchIndex();
+    searchPanel.close();
+    magnifier.hide(); // Sev2 fix: SPA nav 시 잔상 제거
   });
 
   const vvDisposable = bus.onVisualViewportChange(() => {
@@ -217,15 +250,30 @@ async function bootstrap(): Promise<void> {
   };
   browserApi.runtime.onMessage.addListener(onMessage);
 
-  // Alt+Shift+M: 수동 피커 진입 단축키
+  // Global shortcuts: Alt+Shift+M (picker), Cmd/Ctrl+Shift+F (custom search panel — S7)
+  function isEditableTarget(t: EventTarget | null): boolean {
+    if (!(t instanceof HTMLElement)) return false;
+    const tag = t.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+    if (t.isContentEditable) return true;
+    return false;
+  }
   function onGlobalKey(e: KeyboardEvent) {
+    // Sev1 fix: editable 포커스 중엔 단축키 스킵 (타이핑 방해 금지).
+    if (isEditableTarget(e.target)) return;
     if (e.altKey && e.shiftKey && (e.key === 'M' || e.key === 'm')) {
       startManualPicker();
+      return;
+    }
+    if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'F' || e.key === 'f')) {
+      e.preventDefault();
+      if (searchPanel.isOpen()) searchPanel.close();
+      else searchPanel.open();
     }
   }
   document.addEventListener('keydown', onGlobalKey);
 
-  const disposables: Disposable[] = [scrubber, muteDisposable, spaDisposable, vvDisposable];
+  const disposables: Disposable[] = [scrubber, muteDisposable, spaDisposable, vvDisposable, searchPanel];
   let tornDown = false;
   function teardown() {
     if (tornDown) return;
@@ -236,6 +284,7 @@ async function bootstrap(): Promise<void> {
     activePicker = null;
     for (const d of disposables) d.dispose();
     bus.disposeAll();
+    magnifier.destroy();
     renderer.destroy();
     host.unmount();
     scanner.dispose();

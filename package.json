@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "perf": "playwright test --project=webkit tests/perf"
+    "perf": "npm run build && playwright test --project=webkit tests/perf"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

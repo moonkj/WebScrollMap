@@ -7,6 +7,7 @@ export interface Palette {
   media: string;
   link: string;
   trail: string;
+  searchGlow: string;
 }
 
 export function paletteFor(scheme: 'light' | 'dark'): Palette {
@@ -20,6 +21,7 @@ export function paletteFor(scheme: 'light' | 'dark'): Palette {
       media: 'rgba(100,200,255,0.8)',
       link: 'rgba(150,180,255,0.5)',
       trail: 'rgba(200,200,200,0.2)',
+      searchGlow: 'rgba(34,211,238,0.9)',
     };
   }
   return {
@@ -31,5 +33,6 @@ export function paletteFor(scheme: 'light' | 'dark'): Palette {
     media: 'rgba(0,120,200,0.7)',
     link: 'rgba(90,90,120,0.45)',
     trail: 'rgba(0,0,0,0.12)',
+    searchGlow: 'rgba(8,145,178,0.85)',
   };
 }

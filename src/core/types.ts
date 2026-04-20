@@ -89,6 +89,10 @@ export interface RendererOptions {
   onSlowFrame?(ms: number): void;
 }
 
+export interface SearchHitMark {
+  y: number;
+}
+
 // Sev1 계약: Canvas/DOM 구현체가 반드시 준수. 드리프트 방지.
 export interface MinimapRenderer {
   mount(): void;
@@ -96,5 +100,6 @@ export interface MinimapRenderer {
   highlight(state: MinimapState, viewport: ViewportRect): void;
   setPins(pins: ReadonlyArray<Pin>): void;
   setTrail(segs: ReadonlyArray<TrailSegment>): void;
+  setSearchHits(hits: ReadonlyArray<SearchHitMark>): void;
   destroy(): void;
 }

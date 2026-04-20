@@ -1,6 +1,6 @@
 // DOM 모드: 앵커 <600. CSS transform 기반. 접근성(role=scrollbar) 네이티브 이점.
 
-import { AnchorKind, type MinimapRenderer, type MinimapState, type Pin, type RendererOptions, type ScannerResult, type TrailSegment, type ViewportRect } from '@core/types';
+import { AnchorKind, type MinimapRenderer, type MinimapState, type Pin, type RendererOptions, type ScannerResult, type SearchHitMark, type TrailSegment, type ViewportRect } from '@core/types';
 import { paletteFor, type Palette } from './palette';
 
 export function createDomRenderer(root: ShadowRoot, opts: RendererOptions): MinimapRenderer {
@@ -26,6 +26,10 @@ export function createDomRenderer(root: ShadowRoot, opts: RendererOptions): Mini
   const pinsLayer = doc.createElement('div');
   pinsLayer.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;';
   container.appendChild(pinsLayer);
+
+  const glowLayer = doc.createElement('div');
+  glowLayer.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;';
+  container.appendChild(glowLayer);
 
   let palette: Palette = paletteFor(opts.colorScheme);
   let docHeight = 1;
@@ -93,6 +97,15 @@ export function createDomRenderer(root: ShadowRoot, opts: RendererOptions): Mini
         const line = doc.createElement('div');
         line.style.cssText = `position:absolute;top:${top.toFixed(3)}%;left:0;width:1px;height:${Math.max(0.1, h).toFixed(3)}%;background:${palette.trail};`;
         trailLayer.appendChild(line);
+      }
+    },
+    setSearchHits(hits: ReadonlyArray<SearchHitMark>) {
+      glowLayer.textContent = '';
+      for (const h of hits) {
+        const top = (h.y / (docHeight || 1)) * 100;
+        const dot = doc.createElement('div');
+        dot.style.cssText = `position:absolute;top:${top.toFixed(3)}%;left:62%;width:32%;height:3px;background:${palette.searchGlow};border-radius:2px;`;
+        glowLayer.appendChild(dot);
       }
     },
     destroy() {

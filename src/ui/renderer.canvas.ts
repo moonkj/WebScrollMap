@@ -1,6 +1,6 @@
 // Canvas 모드: 앵커 >=600 일 때. GPU 합성 + dirty region.
 
-import { AnchorKind, type MinimapRenderer, type MinimapState, type Pin, type RendererOptions, type ScannerResult, type TrailSegment, type ViewportRect } from '@core/types';
+import { AnchorKind, type MinimapRenderer, type MinimapState, type Pin, type RendererOptions, type ScannerResult, type SearchHitMark, type TrailSegment, type ViewportRect } from '@core/types';
 import { TUNING } from '@config/tuning';
 import { warnSlowFrame } from '@core/assert';
 import { paletteFor, type Palette } from './palette';
@@ -24,6 +24,7 @@ export function createCanvasRenderer(root: ShadowRoot, opts: RendererOptions): M
   let lastResult: ScannerResult | null = null;
   let lastPins: ReadonlyArray<Pin> = [];
   let lastTrail: ReadonlyArray<TrailSegment> = [];
+  let lastHits: ReadonlyArray<SearchHitMark> = [];
 
   const ctx = canvas.getContext('2d');
 
@@ -89,6 +90,15 @@ export function createCanvasRenderer(root: ShadowRoot, opts: RendererOptions): M
     ctx.fillStyle = palette.indicator;
     ctx.fillRect(0, vpY, W, vpH);
 
+    // search hits (발광 마커) — state 무관 상시 표시
+    if (lastHits.length > 0) {
+      ctx.fillStyle = palette.searchGlow;
+      for (const h of lastHits) {
+        const y = h.y * scale;
+        ctx.fillRect(W * 0.62, y - 1.5, W * 0.32, 3);
+      }
+    }
+
     // pins
     for (const p of lastPins) {
       const y = p.y * scale;
@@ -96,9 +106,6 @@ export function createCanvasRenderer(root: ShadowRoot, opts: RendererOptions): M
       ctx.fillRect(W * 0.05, y - 1.5, W * 0.2, 3);
     }
 
-    if (state === 'search') {
-      // 발광 펄스는 후속 — MVP는 인디케이터만
-    }
     ctx.restore();
 
     warnSlowFrame(performance.now() - t0);
@@ -120,6 +127,9 @@ export function createCanvasRenderer(root: ShadowRoot, opts: RendererOptions): M
     },
     setTrail(segs) {
       lastTrail = segs;
+    },
+    setSearchHits(hits) {
+      lastHits = hits;
     },
     destroy() {
       canvas.remove();

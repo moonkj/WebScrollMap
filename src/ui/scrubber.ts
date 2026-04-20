@@ -18,6 +18,7 @@ export interface ScrubberApi {
   onHaptic?(kind: 'snap' | 'edge' | 'pin'): void;
   onStateChange?(state: 'idle' | 'scrubbing'): void;
   onLongPress?(y: number): void;
+  onMagnify?(clientY: number, docY: number): void;
 }
 
 export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
@@ -85,8 +86,9 @@ export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
     longPressFired = false;
     longPressDownX = e.clientX;
     longPressDownY = e.clientY;
-    api.onStateChange?.('scrubbing');
     refreshRect();
+    api.onStateChange?.('scrubbing');
+    api.onMagnify?.(e.clientY, mapEventToY(e.clientY));
     try {
       el.setPointerCapture(e.pointerId);
     } catch {
@@ -129,6 +131,7 @@ export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
     if (longPressFired) return; // pin fired; don't also scrub
     if (scrollGated) return;
     pendingY = mapEventToY(e.clientY);
+    api.onMagnify?.(e.clientY, pendingY);
     if (!ticking) {
       ticking = true;
       requestAnimationFrame(applyScroll);

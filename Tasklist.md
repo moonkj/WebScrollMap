@@ -97,9 +97,16 @@
 - [x] `manifest.json` MV3 `service_worker` + `action` + `default_locale`
 - [x] 다중 엔트리 Vite 빌드 (content/background/popup 3회)
 - [x] Phase 3 Debugger: Sev1 2건 + Sev2 3건 수정
+- [x] `core/telemetry.ts` — opt-in 링 버퍼, off 전환 시 즉시 파기 (D9)
+- [x] `ui/magnifier.ts` — 스크럽 중 플로팅 프리뷰 (blur 금지, transform/opacity)
+- [x] `core/searchIndex.ts` + `ui/searchPanel.ts` — 자체 검색 패널 (S7 해소)
+  - Cmd/Ctrl+Shift+F 단축키, editable 포커스 중 스킵
+  - 외부 클릭 시 닫힘
+  - 2000 entry cap + 부모 offsetTop 캐시
+- [x] `ui/renderer` — `setSearchHits` 계약 확장 + Canvas/DOM 양 구현 glow 마커
+- [x] Playwright WebKit perf 게이트 스캐폴드 (`tests/perf/`) + long-article fixture
+- [x] Phase 4 Debugger: Sev1 2건 + Sev2 3건 수정
 - [ ] Xcode Safari App Extension 래퍼 (실기기) — 다음 사이클
-- [ ] 커스텀 검색 패널 (S7) — 다음 사이클
-- [ ] 텔레메트리 링 버퍼 (opt-in) — 다음 사이클
 
 ## 2. Phase: 차별화 기능
 - [ ] Anchor Snap (±12px)
