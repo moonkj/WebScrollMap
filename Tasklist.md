@@ -81,8 +81,17 @@
 - [x] `content/entry.ts` + `shouldActivate.ts` (bootstrap + RAF scroll)
 - [x] 단위 테스트 21건 (snap/renderMode/scanner/hash/shouldActivate)
 - [x] Debugger Sev1 3건 + Sev2 3건 수정 완료
-- [ ] `platform/container.ts` (내부 스크롤 컨테이너 자동 감지 + 수동 피커) — 다음 사이클
-- [ ] `platform/edgeSwipe.ts` (Pull Handle 전용) — 다음 사이클 (현재는 scrubber 내부 엣지존)
+- [x] `platform/container.ts` (내부 스크롤 컨테이너 자동 감지, window 폴백) — H5 해소 ✅
+- [x] `core/storage.ts` (HMAC 서명 sessionStorage 래퍼) — S6 블로커 해소 ✅
+- [x] `core/pins.ts` + `core/trail.ts` — 차별화 기능 (pathname-scoped) ✅
+- [x] `ui/scrubber.ts` 롱프레스 Pin Drop + 탭 점프 + x/y 합성 거리 취소
+- [x] Sev1 1건 (scroll gate) + Sev2 3건 (now() 중복, merge 체이닝, hypot) 수정
+- [x] 단위 테스트 9 파일 44건 통과 (신규: storage/pins/trail/container 23건)
+- [ ] `platform/edgeSwipe.ts` (Pull Handle 전용 모듈화) — 다음 사이클 (현재는 scrubber 내장)
+- [ ] 수동 피커 UI (H5 감지 실패 시) — 다음 사이클
+- [ ] Privacy Manifest `PrivacyInfo.xcprivacy` — 다음 사이클
+- [ ] Popup UI + i18n `_locales/` — 다음 사이클
+- [ ] Xcode Safari App Extension 래퍼 — 다음 사이클 (실기기)
 
 ## 2. Phase: 차별화 기능
 - [ ] Anchor Snap (±12px)

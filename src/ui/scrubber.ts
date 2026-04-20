@@ -7,14 +7,17 @@ import type { Disposable } from '@core/types';
 
 export const SNAP_THRESHOLD = TUNING.snapThresholdPx;
 export const EDGE_MARGIN = TUNING.edgeMarginPx;
+export const LONG_PRESS_MS = 500;
+export const LONG_PRESS_MOVE_TOLERANCE_PX = 6;
 
 export interface ScrubberApi {
   scrollTo(y: number): void;
   snapCandidates(): number[];
   getDocHeight(): number;
   getViewportHeight(): number;
-  onHaptic?(kind: 'snap' | 'edge'): void;
+  onHaptic?(kind: 'snap' | 'edge' | 'pin'): void;
   onStateChange?(state: 'idle' | 'scrubbing'): void;
+  onLongPress?(y: number): void;
 }
 
 export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
@@ -23,6 +26,20 @@ export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
   let active = false;
   // Sev2 fix: layout thrash 방지. rect는 pointerdown 및 resize에서만 갱신.
   let cachedRect: { top: number; height: number } = { top: 0, height: 0 };
+  // Long-press for Pin Drop
+  let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+  let longPressDownX = 0;
+  let longPressDownY = 0;
+  let longPressFired = false;
+  // Sev1 fix: pin 후보 기간 동안엔 scroll을 보류. 실제 scrub은 move/시간초과 이후.
+  let scrollGated = false;
+
+  function clearLongPress() {
+    if (longPressTimer !== null) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+  }
 
   function refreshRect() {
     const r = el.getBoundingClientRect();
@@ -65,6 +82,9 @@ export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
       return;
     }
     active = true;
+    longPressFired = false;
+    longPressDownX = e.clientX;
+    longPressDownY = e.clientY;
     api.onStateChange?.('scrubbing');
     refreshRect();
     try {
@@ -72,15 +92,42 @@ export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
     } catch {
       // pointerId invalid — ignore
     }
-    pendingY = mapEventToY(e.clientY);
-    if (!ticking) {
-      ticking = true;
-      requestAnimationFrame(applyScroll);
+
+    // Long-press for Pin Drop: pin 후보 기간엔 scroll 보류 (Sev1 fix).
+    // 움직이지 않고 타이머 만료 → pin. 움직이면 scrub 전환 + gate 해제.
+    if (api.onLongPress) {
+      scrollGated = true;
+      const targetY = mapEventToY(e.clientY);
+      longPressTimer = setTimeout(() => {
+        longPressTimer = null;
+        longPressFired = true;
+        api.onHaptic?.('pin');
+        api.onLongPress?.(targetY);
+        scrollGated = true; // pin 발화 후에도 scroll 계속 보류
+      }, LONG_PRESS_MS);
+    } else {
+      scrollGated = false;
+      pendingY = mapEventToY(e.clientY);
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(applyScroll);
+      }
     }
   }
 
   function onPointerMove(e: PointerEvent) {
     if (!active) return;
+    // Sev2 fix: x/y 합성 거리로 판정
+    if (longPressTimer !== null) {
+      const dx = e.clientX - longPressDownX;
+      const dy = e.clientY - longPressDownY;
+      if (Math.hypot(dx, dy) > LONG_PRESS_MOVE_TOLERANCE_PX) {
+        clearLongPress();
+        scrollGated = false; // scrub 시작
+      }
+    }
+    if (longPressFired) return; // pin fired; don't also scrub
+    if (scrollGated) return;
     pendingY = mapEventToY(e.clientY);
     if (!ticking) {
       ticking = true;
@@ -88,24 +135,37 @@ export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
     }
   }
 
-  function onPointerUp() {
+  function onPointerUp(e?: PointerEvent) {
     if (!active) return;
+    // Tap-to-jump: long-press 타이머 발화 전 + 핀 미발화 + gate 활성 → 사용자 의도는 탭 점프.
+    if (longPressTimer !== null && !longPressFired && scrollGated && e) {
+      pendingY = mapEventToY(e.clientY);
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(applyScroll);
+      }
+    }
+    clearLongPress();
     active = false;
+    longPressFired = false;
+    scrollGated = false;
     api.onStateChange?.('idle');
   }
 
+  const onUpEvt = (e: PointerEvent) => onPointerUp(e);
+  const onCancelEvt = () => onPointerUp();
   el.addEventListener('pointerdown', onPointerDown);
   el.addEventListener('pointermove', onPointerMove);
-  el.addEventListener('pointerup', onPointerUp);
-  el.addEventListener('pointercancel', onPointerUp);
+  el.addEventListener('pointerup', onUpEvt);
+  el.addEventListener('pointercancel', onCancelEvt);
   window.addEventListener('resize', refreshRect, { passive: true });
 
   return {
     dispose() {
       el.removeEventListener('pointerdown', onPointerDown);
       el.removeEventListener('pointermove', onPointerMove);
-      el.removeEventListener('pointerup', onPointerUp);
-      el.removeEventListener('pointercancel', onPointerUp);
+      el.removeEventListener('pointerup', onUpEvt);
+      el.removeEventListener('pointercancel', onCancelEvt);
       window.removeEventListener('resize', refreshRect);
     },
   };
