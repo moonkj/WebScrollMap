@@ -48,22 +48,34 @@ export function mountShadowHost(
 
   const root = host.attachShadow({ mode: 'closed' });
 
-  // Shadow 내부 리셋 — 자식에만 적용 (:host에 all: initial 쓰지 말 것).
+  // Shadow 내부 리셋 — 자식에만 적용.
+  // 히트 영역: 44px 전체. 시각: 외곽 6px만 노출 (clip-path).
+  // 확장 시 clip 해제 + opacity 상승.
   const style = doc.createElement('style');
   style.textContent = `
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
-    .wsm-container { position: absolute; inset: 0; pointer-events: none; }
     .wsm-track {
       position: absolute; top: 0; right: 0; bottom: 0; width: 100%;
       pointer-events: auto;
       touch-action: none;
       -webkit-user-select: none; user-select: none;
+      -webkit-touch-callout: none;
       -webkit-tap-highlight-color: transparent;
-      opacity: 0.35;
-      transition: opacity 140ms ease-out;
+      opacity: 0.55;
+      transition: opacity 140ms ease-out, clip-path 140ms ease-out, -webkit-clip-path 140ms ease-out;
+      -webkit-clip-path: inset(0 0 0 38px);
+      clip-path: inset(0 0 0 38px);
+    }
+    :host(.wsm-side-left) .wsm-track {
+      -webkit-clip-path: inset(0 38px 0 0);
+      clip-path: inset(0 38px 0 0);
     }
     :host(:hover) .wsm-track,
-    :host(.wsm-expanded) .wsm-track { opacity: 0.95; }
+    :host(.wsm-expanded) .wsm-track {
+      opacity: 0.95;
+      -webkit-clip-path: inset(0);
+      clip-path: inset(0);
+    }
   `;
   root.appendChild(style);
 

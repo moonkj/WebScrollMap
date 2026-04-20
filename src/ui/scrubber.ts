@@ -157,10 +157,16 @@ export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
 
   const onUpEvt = (e: PointerEvent) => onPointerUp(e);
   const onCancelEvt = () => onPointerUp();
+  // iOS: touchstart preventDefault로 네이티브 텍스트 선택/콜아웃 차단. passive:false 필수.
+  const onTouchStart = (e: TouchEvent) => {
+    if (e.cancelable) e.preventDefault();
+  };
   el.addEventListener('pointerdown', onPointerDown);
   el.addEventListener('pointermove', onPointerMove);
   el.addEventListener('pointerup', onUpEvt);
   el.addEventListener('pointercancel', onCancelEvt);
+  el.addEventListener('touchstart', onTouchStart, { passive: false });
+  el.addEventListener('touchmove', onTouchStart, { passive: false });
   window.addEventListener('resize', refreshRect, { passive: true });
 
   return {
@@ -169,6 +175,8 @@ export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
       el.removeEventListener('pointermove', onPointerMove);
       el.removeEventListener('pointerup', onUpEvt);
       el.removeEventListener('pointercancel', onCancelEvt);
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchStart);
       window.removeEventListener('resize', refreshRect);
     },
   };

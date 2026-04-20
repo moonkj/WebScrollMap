@@ -64,6 +64,9 @@ async function bootstrap(): Promise<void> {
       s.setProperty('left', `${settings.marginPx}px`, 'important');
       s.setProperty('right', 'auto', 'important');
     }
+    // Shadow CSS가 side별 clip-path를 다르게 적용하기 위한 host 클래스.
+    host.host.classList.toggle('wsm-side-left', settings.side === 'left');
+    host.host.classList.toggle('wsm-side-right', settings.side === 'right');
   }
   applyPositionStyle();
 
