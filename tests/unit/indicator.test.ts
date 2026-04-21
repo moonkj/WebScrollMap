@@ -18,18 +18,24 @@ describe('computeIndicatorStyle', () => {
     expect(s.topPct).toBeCloseTo(46.5, 1);
   });
 
-  it('clamps top to 0 at doc start', () => {
+  it('symmetric shrink at doc start preserves center', () => {
+    // scrollY=0, height=800, docH=10000 → centerPct=4%
     const s = computeIndicatorStyle({ scrollY: 0, height: 800, docHeight: 10000 });
     expect(s.topPct).toBe(0);
-    expect(s.heightPct).toBe(MIN_INDICATOR_HEIGHT_PCT);
+    // 대칭 shrink: bottom = 2*center = 8 → height=8 (MIN보다 작게 가려 finger=center 유지)
+    expect(s.heightPct).toBeCloseTo(8, 1);
+    // 시각 중심 = center
+    expect(s.topPct + s.heightPct / 2).toBeCloseTo(4, 1);
   });
 
-  it('clamps top so indicator fits at doc end', () => {
-    // scrollY = maxScroll = 9200
+  it('symmetric shrink at doc end preserves center', () => {
+    // scrollY=9200, height=800, docH=10000 → centerPct=96%
     const s = computeIndicatorStyle({ scrollY: 9200, height: 800, docHeight: 10000 });
-    // actual top: 92%, height: 15% → would overflow
-    expect(s.topPct).toBe(100 - MIN_INDICATOR_HEIGHT_PCT);
-    expect(s.heightPct).toBe(MIN_INDICATOR_HEIGHT_PCT);
+    // 대칭 shrink: top = 2*96-100 = 92, bottom = 100, height = 8
+    expect(s.topPct).toBeCloseTo(92, 1);
+    expect(s.heightPct).toBeCloseTo(8, 1);
+    // 시각 중심 = center
+    expect(s.topPct + s.heightPct / 2).toBeCloseTo(96, 1);
   });
 
   it('handles docH = 0 gracefully', () => {

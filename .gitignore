@@ -1,6 +1,10 @@
 node_modules/
 dist/
 extension/dist/
+# Secrets (admin password, keys)
+.env
+.env.local
+src/config/secrets.ts
 coverage/
 *.log
 .DS_Store

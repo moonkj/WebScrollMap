@@ -64,7 +64,7 @@ export function mountShadowHost(
       -webkit-user-select: none; user-select: none;
       -webkit-touch-callout: none;
       -webkit-tap-highlight-color: transparent;
-      opacity: 0.55;
+      opacity: 0.7;
       transition: opacity 140ms ease-out, clip-path 140ms ease-out, -webkit-clip-path 140ms ease-out;
       /* host에 --wsm-visible 변수로 동적 제어. 기본 6px 노출, 44px 히트영역 중 외곽만 */
       -webkit-clip-path: inset(0 0 0 calc(100% - var(--wsm-visible, 6px)));
@@ -78,11 +78,18 @@ export function mountShadowHost(
       -webkit-clip-path: inset(0 calc(100% - var(--wsm-visible, 6px)) 0 0);
       clip-path: inset(0 calc(100% - var(--wsm-visible, 6px)) 0 0);
     }
-    :host(:hover) .wsm-track,
+    /* :active는 iOS 터치 중에만 활성 (release 즉시 해제) — :hover보다 안정적.
+       wsm-expanded는 onPointerDown 시 JS에서 명시 추가, 해제 시 제거. */
+    :host(:active) .wsm-track,
     :host(.wsm-expanded) .wsm-track {
       opacity: 0.95;
       -webkit-clip-path: inset(0);
       clip-path: inset(0);
+    }
+    /* H7: 스크럽 중(.wsm-expanded) clip-path transition 제거 — 140ms 애니메이션이
+       indicator 시각적 위치를 교란하는 부작용 차단. 이미 확장 완료 상태. */
+    :host(.wsm-expanded) .wsm-track {
+      transition: none;
     }
     @keyframes wsm-pin-pulse {
       0% { transform: translateY(-50%) scale(2); opacity: 0.2; }

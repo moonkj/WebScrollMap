@@ -1,4 +1,4 @@
-// Popup — Pro tier 인식 + 결제 + 복원 + 확장 설정.
+// Popup — 설정 컨트롤 (App Store 단일 가격, tier 제거 후).
 
 import {
   DEFAULT_SETTINGS,
@@ -8,13 +8,8 @@ import {
   type PinSummary,
 } from '@core/messages';
 import { getBrowserApi } from '@platform/browserApi';
-import type { Tier, Entitlement } from '@core/entitlement';
-import type { AdminConfig, AdminOverride } from '@core/adminConfig';
-import { applyOverride } from '@core/adminConfig';
 
-const EXTENSION_VERSION = '0.3.0';
-const UNLOCK_CLICK_COUNT = 5;
-const UNLOCK_WINDOW_MS = 3000;
+const EXTENSION_VERSION = '1.0.0';
 
 const api = getBrowserApi();
 
@@ -37,7 +32,6 @@ function applyI18n(root: Document) {
     const v = get(k);
     if (v !== null) {
       el.textContent = v;
-      // 버튼류에는 aria-label도 로컬라이즈된 값으로 (스크린리더가 영어 그대로 읽지 않게)
       if (el.tagName === 'BUTTON' && el.hasAttribute('aria-label')) {
         el.setAttribute('aria-label', v);
       }
@@ -69,100 +63,6 @@ async function fetchStatus(): Promise<PageStatus | null> {
   return null;
 }
 
-async function fetchEntitlement(): Promise<{ tier: Tier; entitlement: Entitlement | null }> {
-  try {
-    const r = (await api.runtime.sendMessage({ type: 'get-entitlement' })) as WsmResponse;
-    if (r.ok) return { tier: r.tier ?? 'free', entitlement: r.entitlement ?? null };
-  } catch {}
-  return { tier: 'free', entitlement: null };
-}
-
-async function purchasePro(): Promise<{ tier: Tier; error?: string }> {
-  try {
-    const r = (await api.runtime.sendMessage({ type: 'purchase-pro' })) as WsmResponse;
-    if (r.ok) {
-      const tier = ((r.entitlement as { tier?: Tier } | null)?.tier) ?? r.tier ?? 'free';
-      return { tier };
-    }
-    const tier = ((r.entitlement as { tier?: Tier } | null)?.tier) ?? 'free';
-    return { tier, error: r.error };
-  } catch (e) {
-    return { tier: 'free', error: String(e) };
-  }
-}
-
-async function restorePurchases(): Promise<{ tier: Tier; error?: string }> {
-  try {
-    const r = (await api.runtime.sendMessage({ type: 'restore-purchases' })) as WsmResponse;
-    if (r.ok) {
-      const tier = ((r.entitlement as { tier?: Tier } | null)?.tier) ?? r.tier ?? 'free';
-      return { tier };
-    }
-    const tier = ((r.entitlement as { tier?: Tier } | null)?.tier) ?? 'free';
-    return { tier, error: r.error };
-  } catch (e) {
-    return { tier: 'free', error: String(e) };
-  }
-}
-
-function i18nMessage(key: string): string | null {
-  try {
-    const n = globalThis as unknown as {
-      browser?: { i18n?: { getMessage(k: string): string } };
-      chrome?: { i18n?: { getMessage(k: string): string } };
-    };
-    const msg = n.browser?.i18n?.getMessage(key) ?? n.chrome?.i18n?.getMessage(key);
-    return msg && msg.length > 0 ? msg : null;
-  } catch {
-    return null;
-  }
-}
-
-function purchaseErrorMessage(err: string): string {
-  // _locales에서 로케일별 번역 조회. 누락 시 영어 fallback.
-  const keyMap: Record<string, string> = {
-    'product-not-available': 'purchaseErrProductNotAvailable',
-    'user-cancelled': 'purchaseErrUserCancelled',
-    'pending': 'purchaseErrPending',
-    'verification-failed': 'purchaseErrVerificationFailed',
-    'native not available': 'purchaseErrNativeUnavailable',
-    'native messaging unavailable': 'purchaseErrNativeUnavailable',
-  };
-  const key = keyMap[err];
-  if (key) {
-    const msg = i18nMessage(key);
-    if (msg) return msg;
-  }
-  const fallback = i18nMessage('purchaseErrGeneric');
-  return fallback ? `${fallback}: ${err}` : `Purchase failed: ${err}`;
-}
-
-async function fetchAdminConfig(): Promise<AdminConfig | null> {
-  try {
-    const r = (await api.runtime.sendMessage({ type: 'get-admin-config' })) as WsmResponse;
-    if (r.ok && r.adminConfig) return r.adminConfig;
-  } catch {}
-  return null;
-}
-
-async function setOverride(override: AdminOverride): Promise<void> {
-  try {
-    await api.runtime.sendMessage({ type: 'set-admin-override', override });
-  } catch {}
-}
-
-async function setAdminEnabled(enabled: boolean): Promise<void> {
-  try {
-    await api.runtime.sendMessage({ type: 'set-admin-enabled', enabled });
-  } catch {}
-}
-
-async function resetAdminStats(): Promise<void> {
-  try {
-    await api.runtime.sendMessage({ type: 'reset-admin-stats' });
-  } catch {}
-}
-
 async function fetchPins(): Promise<PinSummary[]> {
   try {
     const r = (await api.runtime.sendMessage({ type: 'get-pins' })) as WsmResponse;
@@ -172,28 +72,11 @@ async function fetchPins(): Promise<PinSummary[]> {
 }
 
 async function jumpToPin(id: string) {
-  try {
-    await api.runtime.sendMessage({ type: 'jump-to-pin', pinId: id });
-  } catch {}
+  try { await api.runtime.sendMessage({ type: 'jump-to-pin', pinId: id }); } catch {}
 }
 
 async function deletePin(id: string) {
-  try {
-    await api.runtime.sendMessage({ type: 'delete-pin', pinId: id });
-  } catch {}
-}
-
-function applyTierUI(tier: Tier) {
-  const badge = document.getElementById('tier-badge');
-  if (badge) {
-    badge.textContent = tier === 'pro' ? 'PRO' : 'FREE';
-    badge.classList.toggle('pro', tier === 'pro');
-  }
-  const banner = document.getElementById('upgrade-banner');
-  if (banner) banner.hidden = tier === 'pro';
-  document.querySelectorAll<HTMLElement>('.wsm-pro').forEach((el) => {
-    el.classList.toggle('wsm-locked', tier === 'free');
-  });
+  try { await api.runtime.sendMessage({ type: 'delete-pin', pinId: id }); } catch {}
 }
 
 function renderSettingsUI(settings: Settings) {
@@ -210,9 +93,6 @@ function renderSettingsUI(settings: Settings) {
   });
   document.querySelectorAll<HTMLButtonElement>('[data-opacity]').forEach((b) => {
     b.setAttribute('aria-pressed', String(Number(b.dataset.opacity)) === String(settings.floatingOpacity) ? 'true' : 'false');
-  });
-  document.querySelectorAll<HTMLButtonElement>('[data-filter]').forEach((b) => {
-    b.setAttribute('aria-pressed', b.dataset.filter === settings.smartFilter ? 'true' : 'false');
   });
   document.querySelectorAll<HTMLButtonElement>('[data-theme]').forEach((b) => {
     b.setAttribute('aria-pressed', b.dataset.theme === settings.theme ? 'true' : 'false');
@@ -288,106 +168,28 @@ function renderPins(pins: ReadonlyArray<PinSummary>, refresh: () => Promise<void
   });
 }
 
-function applyAdminUI(admin: AdminConfig | null) {
-  const panel = document.getElementById('admin-panel');
-  if (!panel) return;
-  panel.hidden = !admin?.adminEnabled;
-  if (!admin?.adminEnabled) return;
-  // override seg pressed state
-  document.querySelectorAll<HTMLButtonElement>('[data-override]').forEach((b) => {
-    b.setAttribute('aria-pressed', b.dataset.override === admin.override ? 'true' : 'false');
-  });
-  // stats
-  const monthEl = document.getElementById('admin-month');
-  if (monthEl) monthEl.textContent = `${admin.stats.year}-${String(admin.stats.month).padStart(2, '0')}`;
-  const freeEl = document.getElementById('admin-free-count');
-  if (freeEl) freeEl.textContent = String(admin.stats.freeCount);
-  const proEl = document.getElementById('admin-pro-count');
-  if (proEl) proEl.textContent = String(admin.stats.proCount);
-}
-
 async function init() {
   applyI18n(document);
   let settings = await fetchSettings();
-  const { tier: realTier } = await fetchEntitlement();
   const status = await fetchStatus();
-  let admin = await fetchAdminConfig();
-  let tier: Tier = applyOverride(admin?.override ?? 'auto', realTier);
-  applyTierUI(tier);
   renderSettingsUI(settings);
   renderStatus(status);
-  applyAdminUI(admin);
 
-  // Pro 잠금 탭 피드백 — locked row 클릭 시 흔들기 + status 메시지
-  document.addEventListener('click', (e) => {
-    const target = e.target as HTMLElement | null;
-    const lockedRow = target?.closest('.wsm-pro.wsm-locked') as HTMLElement | null;
-    if (!lockedRow) return;
-    e.preventDefault();
-    e.stopPropagation();
-    lockedRow.classList.remove('wsm-shake');
-    void lockedRow.offsetWidth; // reflow로 애니메이션 재시작
-    lockedRow.classList.add('wsm-shake');
-    const statusEl = document.getElementById('status');
-    if (statusEl) statusEl.textContent = i18nMessage('proLockedHint') ?? 'Pro only — upgrade to unlock';
-  }, true);
-
-  // Version 표시
   const versionText = document.getElementById('version-text');
   if (versionText) versionText.textContent = EXTENSION_VERSION;
-
-  // 5-click unlock — 2클릭 이상부터 진행도 (예: "v0.3.0 (3/5)") 표시
-  const versionTap = document.getElementById('version-tap');
-  const versionLabel = document.getElementById('version-text');
-  const origVersionText = versionLabel?.textContent ?? '';
-  let clickCount = 0;
-  let firstClickAt = 0;
-  let resetLabelTimer: ReturnType<typeof setTimeout> | null = null;
-  function resetVersionLabel() {
-    if (versionLabel) versionLabel.textContent = origVersionText;
-  }
-  versionTap?.addEventListener('click', async () => {
-    const now = Date.now();
-    if (now - firstClickAt > UNLOCK_WINDOW_MS) {
-      clickCount = 0;
-      firstClickAt = now;
-    }
-    clickCount += 1;
-    if (clickCount >= UNLOCK_CLICK_COUNT) {
-      clickCount = 0;
-      if (resetLabelTimer !== null) clearTimeout(resetLabelTimer);
-      resetVersionLabel();
-      const nextEnabled = !admin?.adminEnabled;
-      await setAdminEnabled(nextEnabled);
-      admin = await fetchAdminConfig();
-      applyAdminUI(admin);
-      versionTap.classList.add('wsm-unlocking');
-      setTimeout(() => versionTap.classList.remove('wsm-unlocking'), 600);
-    } else if (clickCount >= 2) {
-      if (versionLabel) versionLabel.textContent = `${origVersionText} (${clickCount}/${UNLOCK_CLICK_COUNT})`;
-      versionTap.classList.add('wsm-unlocking');
-      if (resetLabelTimer !== null) clearTimeout(resetLabelTimer);
-      resetLabelTimer = setTimeout(() => {
-        resetVersionLabel();
-        versionTap.classList.remove('wsm-unlocking');
-      }, UNLOCK_WINDOW_MS);
-    }
-  });
 
   async function refreshPins() {
     const pins = await fetchPins();
     renderPins(pins, refreshPins);
   }
-  if (tier === 'pro') await refreshPins();
+  await refreshPins();
 
-  // enabled 토글
   document.getElementById('enabled')?.addEventListener('change', async (e) => {
     const checked = (e.target as HTMLInputElement).checked;
     const next = await saveSettings({ enabled: checked });
     if (next) { settings = next; renderSettingsUI(settings); }
   });
 
-  // side
   document.querySelectorAll<HTMLButtonElement>('[data-side]').forEach((b) =>
     b.addEventListener('click', async () => {
       const side = b.dataset.side === 'left' ? 'left' : 'right';
@@ -396,7 +198,6 @@ async function init() {
     }),
   );
 
-  // margin
   document.querySelectorAll<HTMLButtonElement>('[data-margin]').forEach((b) =>
     b.addEventListener('click', async () => {
       const raw = Number(b.dataset.margin);
@@ -406,7 +207,6 @@ async function init() {
     }),
   );
 
-  // bar width
   document.querySelectorAll<HTMLButtonElement>('[data-barwidth]').forEach((b) =>
     b.addEventListener('click', async () => {
       const raw = Number(b.dataset.barwidth);
@@ -416,7 +216,6 @@ async function init() {
     }),
   );
 
-  // opacity
   document.querySelectorAll<HTMLButtonElement>('[data-opacity]').forEach((b) =>
     b.addEventListener('click', async () => {
       const raw = Number(b.dataset.opacity);
@@ -426,16 +225,6 @@ async function init() {
     }),
   );
 
-  // smart filter
-  document.querySelectorAll<HTMLButtonElement>('[data-filter]').forEach((b) =>
-    b.addEventListener('click', async () => {
-      const f = (['all', 'headings', 'media'] as const).includes(b.dataset.filter as 'all') ? (b.dataset.filter as 'all' | 'headings' | 'media') : 'all';
-      const next = await saveSettings({ smartFilter: f });
-      if (next) { settings = next; renderSettingsUI(settings); }
-    }),
-  );
-
-  // theme
   document.querySelectorAll<HTMLButtonElement>('[data-theme]').forEach((b) =>
     b.addEventListener('click', async () => {
       const t = b.dataset.theme as 'default' | 'sunset' | 'ocean' | 'forest' | 'mono';
@@ -444,68 +233,11 @@ async function init() {
     }),
   );
 
-  // Upgrade
-  document.getElementById('upgrade-btn')?.addEventListener('click', async () => {
-    const statusEl = document.getElementById('status');
-    if (statusEl) statusEl.textContent = i18nMessage('purchaseInProgress') ?? 'Processing…';
-    const result = await purchasePro();
-    tier = result.tier;
-    applyTierUI(tier);
-    if (statusEl) {
-      if (result.error) statusEl.textContent = purchaseErrorMessage(result.error);
-      else if (tier === 'pro') statusEl.textContent = i18nMessage('proActivated') ?? 'Pro activated';
-    }
-    if (tier === 'pro') await refreshPins();
-  });
-
-  // Restore
-  document.getElementById('restore-btn')?.addEventListener('click', async () => {
-    const statusEl = document.getElementById('status');
-    if (statusEl) statusEl.textContent = i18nMessage('restoreInProgress') ?? 'Restoring…';
-    const result = await restorePurchases();
-    tier = result.tier;
-    applyTierUI(tier);
-    if (statusEl) {
-      if (result.error) statusEl.textContent = purchaseErrorMessage(result.error);
-      else if (tier === 'pro') statusEl.textContent = i18nMessage('proRestored') ?? 'Pro restored';
-      else statusEl.textContent = i18nMessage('restoreNone') ?? 'No purchase to restore';
-    }
-    if (tier === 'pro') await refreshPins();
-  });
-
-  // Clear pins/trail
   document.getElementById('clear-pins')?.addEventListener('click', async () => {
     try {
       await api.runtime.sendMessage({ type: 'clear-pins' });
       await refreshPins();
     } catch {}
-  });
-
-  // Admin override buttons
-  document.querySelectorAll<HTMLButtonElement>('[data-override]').forEach((b) =>
-    b.addEventListener('click', async () => {
-      const o = (b.dataset.override as AdminOverride) ?? 'auto';
-      await setOverride(o);
-      admin = await fetchAdminConfig();
-      applyAdminUI(admin);
-      tier = applyOverride(admin?.override ?? 'auto', realTier);
-      applyTierUI(tier);
-      if (tier === 'pro') await refreshPins();
-    }),
-  );
-
-  // Admin stats reset
-  document.getElementById('admin-reset')?.addEventListener('click', async () => {
-    await resetAdminStats();
-    admin = await fetchAdminConfig();
-    applyAdminUI(admin);
-  });
-
-  // Admin logout — 패널 숨김 (override는 유지, 단순 UI 비공개)
-  document.getElementById('admin-logout')?.addEventListener('click', async () => {
-    await setAdminEnabled(false);
-    admin = await fetchAdminConfig();
-    applyAdminUI(admin);
   });
 }
 

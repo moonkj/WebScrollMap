@@ -40,9 +40,9 @@ describe('settings', () => {
     expect(s1.marginPx).toBe(DEFAULT_SETTINGS.marginPx);
   });
 
-  it('clamps invalid margin to 16', async () => {
+  it('clamps invalid margin to 0 (App Store default)', async () => {
     const s = await saveSettings(store, { marginPx: 99 as unknown as 0 });
-    expect(s.marginPx).toBe(16);
+    expect(s.marginPx).toBe(0);
   });
 
   it('clamps invalid side to right', async () => {

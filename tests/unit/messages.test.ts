@@ -63,31 +63,6 @@ describe('isWsmMessage', () => {
     });
   });
 
-  describe('set-admin-override values', () => {
-    it('accepts the three valid overrides', () => {
-      expect(isWsmMessage({ type: 'set-admin-override', override: 'auto' })).toBe(true);
-      expect(isWsmMessage({ type: 'set-admin-override', override: 'force-free' })).toBe(true);
-      expect(isWsmMessage({ type: 'set-admin-override', override: 'force-pro' })).toBe(true);
-    });
-    it('rejects invalid override values', () => {
-      expect(isWsmMessage({ type: 'set-admin-override', override: 'bogus' })).toBe(false);
-      expect(isWsmMessage({ type: 'set-admin-override' })).toBe(false);
-      expect(isWsmMessage({ type: 'set-admin-override', override: null })).toBe(false);
-    });
-  });
-
-  describe('set-admin-enabled enabled', () => {
-    it('accepts true and false', () => {
-      expect(isWsmMessage({ type: 'set-admin-enabled', enabled: true })).toBe(true);
-      expect(isWsmMessage({ type: 'set-admin-enabled', enabled: false })).toBe(true);
-    });
-    it('rejects non-boolean enabled', () => {
-      expect(isWsmMessage({ type: 'set-admin-enabled', enabled: 'yes' })).toBe(false);
-      expect(isWsmMessage({ type: 'set-admin-enabled', enabled: 1 })).toBe(false);
-      expect(isWsmMessage({ type: 'set-admin-enabled' })).toBe(false);
-    });
-  });
-
   describe('haptic kind', () => {
     it('accepts snap, pin, edge', () => {
       expect(isWsmMessage({ type: 'haptic', kind: 'snap' })).toBe(true);
@@ -110,38 +85,6 @@ describe('isWsmMessage', () => {
     });
   });
 
-  describe('entitlement-changed payload', () => {
-    it('accepts null entitlement with tier free', () => {
-      expect(
-        isWsmMessage({ type: 'entitlement-changed', entitlement: null, tier: 'free' }),
-      ).toBe(true);
-    });
-    it('accepts valid entitlement object with required fields', () => {
-      expect(
-        isWsmMessage({
-          type: 'entitlement-changed',
-          entitlement: { tier: 'pro', deviceId: 'abc', validUntil: 123, signature: 'deadbeef-cafe' },
-          tier: 'pro',
-        }),
-      ).toBe(true);
-    });
-    it('rejects entitlement object missing required fields (S6 hardening)', () => {
-      expect(
-        isWsmMessage({ type: 'entitlement-changed', entitlement: {}, tier: 'pro' }),
-      ).toBe(false);
-    });
-    it('rejects invalid tier', () => {
-      expect(
-        isWsmMessage({ type: 'entitlement-changed', entitlement: null, tier: 'premium' }),
-      ).toBe(false);
-    });
-    it('rejects non-object, non-null entitlement', () => {
-      expect(
-        isWsmMessage({ type: 'entitlement-changed', entitlement: 'string', tier: 'free' }),
-      ).toBe(false);
-    });
-  });
-
   describe('payload-less messages', () => {
     it('accepts all no-payload variants', () => {
       const noPayload = [
@@ -151,15 +94,18 @@ describe('isWsmMessage', () => {
         'clear-trail',
         'get-pins',
         'get-entitlement',
-        'purchase-pro',
-        'restore-purchases',
         'telemetry-flush',
-        'get-admin-config',
-        'reset-admin-stats',
-        'admin-override-changed',
         'ping',
       ];
       for (const t of noPayload) expect(isWsmMessage({ type: t })).toBe(true);
+    });
+  });
+
+  describe('removed message types are rejected', () => {
+    it('rejects legacy tier/purchase/admin messages', () => {
+      for (const t of ['set-admin-override', 'reset-admin-stats', 'admin-override-changed', 'entitlement-changed', 'purchase-pro', 'restore-purchases', 'get-admin-config', 'set-admin-enabled']) {
+        expect(isWsmMessage({ type: t })).toBe(false);
+      }
     });
   });
 });

@@ -211,3 +211,49 @@ Architect 판단: 실기기 불필요한 영역 집중 처리.
 - Swift XCTest 추가 (Native IAP/Haptic 검증)
 - Playwright E2E (happy-dom 한계: Canvas / TreeWalker / history.pushState)
 - LEGAL 정책 ja/zh/fr/hi 번역 (현재 영문 fallback)
+
+## 2026-04-21
+
+### [27] 비즈니스 모델 전환 — Free/Pro → App Store 단일 0.99$ 구매
+- 유/무료 tier 제거. App Store 다운로드 = 전체 기능 사용. 인앱 구매 없음.
+- `featureGate.ts` 항상 true 반환, `applyTierConstraints` 패스스루로 단순화
+- 메시지 타입 제거: `purchase-pro`, `restore-purchases`, `entitlement-changed`, `set-admin-override`, `reset-admin-stats`
+- `get-entitlement`은 레거시 호환으로 `{tier: 'pro'}` 항상 반환
+- Main.html(호스트 앱 설명)에서 Pro/StoreKit/grace period/월 구독 문구 제거
+- 지원 섹션에서 GitHub 링크 + Gmail/Slack Q&A 삭제
+
+### [28] 팝업 UX 개편
+- **기본값 변경**: side=right, marginPx=0, barWidthPx=10(보통), floatingOpacity=70%, theme=default(첫째 색)
+- 하단 버전 표기 `v1.0.0`
+- 관리자 모드 기능 일시 도입(5-click unlock, 비번 1639, 누적 사용자 수 표시) → 최종 **전체 삭제**
+  - `adminConfig.ts`, `config/secrets.ts`, `config/secrets.example.ts`, `tests/unit/adminConfig.test.ts` 제거
+  - 관련 메시지(`get-admin-config`, `set-admin-enabled`) + CSS + i18n 키 정리
+
+### [29] 핀 UX 수정 — 꾹 누른 위치에 핀
+- iOS Safari에서 `window.prompt` 차단 → 인라인 비밀번호 폼으로 대체 후 관리자 모드와 함께 삭제
+- `onLongPress` 동작: 현재 뷰포트 중앙 → 손가락 doc Y(`barDocY`)로 변경
+- 화면 이동(`container.setScrollY`) 제거 — 꾹 눌러도 페이지 스크롤 없음
+
+### [30] 스크럽 인디케이터-손가락 정합 — 팀 4명 병렬 디버깅
+**증상**: 바 스와이프 시 손가락이 인디케이터 하단에 위치(중앙이어야 함), 핀이 인디케이터 중간에 찍혀 불일치.
+
+**Coder**: 빌드 최신 / 소스 일치 확인
+**Debugger**: long-press 취소 직후 첫 move에서 `onScrubMove` 호출 누락 → indicator가 stale scrollY로 렌더
+**Performance Engineer**: `onScroll` premature clear(100px tolerance) + visualViewport 미스매치 가설
+**Test Engineer**: 6개 시나리오 수학적 계산 모두 `finger=visualCenter` 일치 — 로직 정확 확인
+
+**수정 (scrubber.ts + indicator.ts + content/entry.ts)**:
+- `mapEventToY`: `pct * docH - vpH/2` (unclamped) — 브라우저가 scrollTop 자연 clamp
+- `computeIndicatorStyle`: 대칭 shrink로 바 경계에서도 중심 보존 (기존엔 top shift로 중심 이동)
+- `onPointerDown`에서 즉시 `onScrubMove` 호출 → 초기 터치부터 indicator가 손가락 따라감
+- long-press 취소 직후 첫 move에서 `onScrubMove` + `schedule` 호출 + early return
+- `onLongPress` 콜백 끝에서 `scrubCommandY = null` 리셋해 stuck 방지
+- `onScroll` clear 조건: scrubCommandY를 `[0, docH-vpH]`로 clamp 후 비교
+
+**인디케이터 테스트 재작성** (`indicator.test.ts`): 대칭 shrink 동작 반영 — `symmetric shrink at doc start/end preserves center`
+
+### [31] 1.0.0 릴리스 준비
+- `extension/manifest.json`: 0.2.0 → **1.0.0**
+- `pbxproj`: `MARKETING_VERSION = 1.0` → **1.0.0**
+- `extension/dist/*` + `popup.html` + `manifest.json` → 네이티브 Extension Resources로 동기화
+- **검증**: Typecheck / 321 tests / build OK (content 49.87KB / background 3.66KB / popup 5.62KB)

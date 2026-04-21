@@ -118,28 +118,20 @@ describe('createScrubber — tap', () => {
     expect(api.onStateChange).toHaveBeenCalledWith('idle');
   });
 
-  it('ignores events not on wsm-track', () => {
+  it('accepts events on the host element itself (iOS composedPath fallback)', () => {
+    // 이전 동작: 'wsm-track' 클래스가 없으면 무시. 새 동작: target이 host 자체면
+    // 허용 (iOS composedPath에서 shadow 내부가 잘려나가는 케이스 대응).
     const el = document.createElement('div');
-    // no wsm-track class
     (el as any).getBoundingClientRect = () => ({ top: 0, height: 1000, left: 0, right: 100, bottom: 1000, width: 100, x: 0, y: 0, toJSON: () => ({}) });
     (el as any).setPointerCapture = () => {};
     document.body.appendChild(el);
     const api = makeApi();
     createScrubber(el, api);
-    // composedPath inside firePointer falls back to [el,...] but el has no wsm-track class
     firePointer(el, 'pointerdown', { clientY: 500 });
-    expect(api.scrollTo).not.toHaveBeenCalled();
-    expect(api.onStateChange).not.toHaveBeenCalled();
+    expect(api.onStateChange).toHaveBeenCalledWith('scrubbing');
   });
 
-  it('ignores edge-zone touches (x > innerWidth - EDGE_MARGIN)', () => {
-    const el = makeTrackEl();
-    const api = makeApi();
-    createScrubber(el, api);
-    firePointer(el, 'pointerdown', { clientX: 390 - EDGE_MARGIN + 1, clientY: 500, pointerType: 'touch' });
-    expect(api.scrollTo).not.toHaveBeenCalled();
-    expect(api.onHaptic).toHaveBeenCalledWith('edge');
-  });
+  // 엣지 존 체크 제거 (바 우측 경계와 겹쳐 정당한 터치 차단하는 버그) → 테스트 삭제.
 });
 
 describe('createScrubber — long-press', () => {

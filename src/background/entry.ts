@@ -2,12 +2,6 @@
 
 import { isWsmMessage, type WsmMessage, type WsmResponse } from '@core/messages';
 import { loadSettings, saveSettings } from '@core/settings';
-import {
-  loadAdminConfig,
-  saveOverride,
-  saveEnabled,
-  resetStats,
-} from '@core/adminConfig';
 import { getBrowserApi } from '@platform/browserApi';
 
 const api = getBrowserApi();
@@ -58,41 +52,6 @@ api.runtime.onMessage.addListener((raw, _sender, sendResponse) => {
       sendResponse({ ok: true } satisfies WsmResponse);
       return false;
     }
-    case 'get-admin-config': {
-      loadAdminConfig(api.storage.local, Date.now())
-        .then((adminConfig) => sendResponse({ ok: true, adminConfig } satisfies WsmResponse))
-        .catch((e) => sendResponse({ ok: false, error: String(e) } satisfies WsmResponse));
-      return true;
-    }
-    case 'set-admin-override': {
-      saveOverride(api.storage.local, msg.override)
-        .then(async () => {
-          // 모든 탭에 override 변경 알림 → 탭 재평가
-          if (api.tabs) {
-            const tabs = await api.tabs.query({});
-            for (const t of tabs) {
-              if (typeof t.id === 'number') {
-                api.tabs.sendMessage(t.id, { type: 'admin-override-changed' }).catch(() => {});
-              }
-            }
-          }
-          sendResponse({ ok: true } satisfies WsmResponse);
-        })
-        .catch((e) => sendResponse({ ok: false, error: String(e) } satisfies WsmResponse));
-      return true;
-    }
-    case 'set-admin-enabled': {
-      saveEnabled(api.storage.local, msg.enabled)
-        .then(() => sendResponse({ ok: true } satisfies WsmResponse))
-        .catch((e) => sendResponse({ ok: false, error: String(e) } satisfies WsmResponse));
-      return true;
-    }
-    case 'reset-admin-stats': {
-      resetStats(api.storage.local, Date.now())
-        .then(() => sendResponse({ ok: true } satisfies WsmResponse))
-        .catch((e) => sendResponse({ ok: false, error: String(e) } satisfies WsmResponse));
-      return true;
-    }
     case 'haptic': {
       const nativeApi = api as unknown as {
         runtime: { sendNativeMessage?: (appId: string, msg: unknown) => Promise<unknown> };
@@ -104,48 +63,9 @@ api.runtime.onMessage.addListener((raw, _sender, sendResponse) => {
       sendResponse({ ok: true } satisfies WsmResponse);
       return false;
     }
-    case 'get-entitlement':
-    case 'purchase-pro':
-    case 'restore-purchases': {
-      const nativeApi = api as unknown as {
-        runtime: { sendNativeMessage?: (appId: string, msg: unknown) => Promise<unknown> };
-      };
-      const NATIVE_APP_ID = 'com.kjmoon.WebScrollMap';
-      if (typeof nativeApi.runtime.sendNativeMessage === 'function') {
-        nativeApi.runtime
-          .sendNativeMessage(NATIVE_APP_ID, msg)
-          .then((r) => {
-            const native = r as { ok?: boolean; entitlement?: unknown; error?: string };
-            if (native?.ok) {
-              // verifyEntitlement는 content 쪽에서 재처리. 여기선 tier 판정은 스킵.
-              sendResponse({ ok: true, entitlement: native.entitlement as never } satisfies WsmResponse);
-              // 모든 탭에 entitlement-changed 브로드캐스트
-              if (api.tabs) {
-                api.tabs.query({}).then((tabs) => {
-                  for (const t of tabs) {
-                    if (typeof t.id === 'number') {
-                      api.tabs!.sendMessage(t.id, {
-                        type: 'entitlement-changed',
-                        entitlement: native.entitlement,
-                        tier: (native.entitlement as { tier?: string } | null)?.tier ?? 'free',
-                      }).catch(() => {});
-                    }
-                  }
-                }).catch(() => {});
-              }
-            } else {
-              // 실패해도 native가 entitlement를 돌려줄 수 있으므로 전달
-              sendResponse({
-                ok: false,
-                error: native?.error ?? 'native not available',
-                entitlement: (native?.entitlement as never) ?? null,
-              } satisfies WsmResponse);
-            }
-          })
-          .catch((e: unknown) => sendResponse({ ok: false, error: String(e) } satisfies WsmResponse));
-        return true;
-      }
-      sendResponse({ ok: false, error: 'native messaging unavailable' } satisfies WsmResponse);
+    case 'get-entitlement': {
+      // 레거시 호환 — tier 제거됐으므로 pro 반환.
+      sendResponse({ ok: true, entitlement: null, tier: 'pro' } satisfies WsmResponse);
       return false;
     }
     default: {

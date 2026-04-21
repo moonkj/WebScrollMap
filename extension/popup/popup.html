@@ -8,20 +8,9 @@
   </head>
   <body>
     <header class="wsm-head">
-      <div class="wsm-title-row">
-        <h1 class="wsm-title" data-i18n="appName">WebScrollMap</h1>
-        <span class="wsm-tier-badge" id="tier-badge">FREE</span>
-      </div>
+      <h1 class="wsm-title" data-i18n="appName">WebScrollMap</h1>
       <div class="wsm-status" id="status" aria-live="polite"></div>
     </header>
-
-    <section class="wsm-upgrade" id="upgrade-banner" hidden>
-      <div class="wsm-upgrade-text">
-        <strong data-i18n="upgradeTitle">Unlock all features</strong>
-        <small data-i18n="upgradeSubtitle">Pin Drop · Search · Trail · Theme · $0.99 one-time</small>
-      </div>
-      <button type="button" class="wsm-upgrade-btn" id="upgrade-btn" data-i18n="upgradeCTA">Upgrade</button>
-    </section>
 
     <section class="wsm-row">
       <label class="wsm-switch">
@@ -31,9 +20,9 @@
       </label>
     </section>
 
-    <section class="wsm-row wsm-pro" data-pro="right-side">
+    <section class="wsm-row">
       <div class="wsm-label">
-        <span data-i18n="side">Side</span><span class="wsm-lock" aria-hidden="true">🔒</span>
+        <span data-i18n="side">Side</span>
       </div>
       <div class="wsm-seg" role="radiogroup" aria-label="Side">
         <button type="button" data-side="left" data-i18n="sideLeft" aria-label="Left">Left</button>
@@ -41,9 +30,9 @@
       </div>
     </section>
 
-    <section class="wsm-row wsm-pro" data-pro="margin-custom">
+    <section class="wsm-row">
       <div class="wsm-label">
-        <span data-i18n="margin">Margin</span><span class="wsm-lock" aria-hidden="true">🔒</span>
+        <span data-i18n="margin">Margin</span>
       </div>
       <div class="wsm-seg" role="radiogroup" aria-label="Margin">
         <button type="button" data-margin="0">0</button>
@@ -54,9 +43,9 @@
       </div>
     </section>
 
-    <section class="wsm-row wsm-pro" data-pro="bar-width">
+    <section class="wsm-row">
       <div class="wsm-label">
-        <span data-i18n="barWidth">Bar width</span><span class="wsm-lock" aria-hidden="true">🔒</span>
+        <span data-i18n="barWidth">Bar width</span>
       </div>
       <div class="wsm-seg" role="radiogroup" aria-label="Bar width">
         <button type="button" data-barwidth="4" data-i18n="barWidthThin" aria-label="Thin">얇게</button>
@@ -65,9 +54,9 @@
       </div>
     </section>
 
-    <section class="wsm-row wsm-pro" data-pro="opacity">
+    <section class="wsm-row">
       <div class="wsm-label">
-        <span data-i18n="floatingOpacity">Pin pad</span><span class="wsm-lock" aria-hidden="true">🔒</span>
+        <span data-i18n="floatingOpacity">Pin pad</span>
       </div>
       <div class="wsm-seg" role="radiogroup" aria-label="Pin pad opacity">
         <button type="button" data-opacity="40">40%</button>
@@ -76,9 +65,9 @@
       </div>
     </section>
 
-    <section class="wsm-row wsm-pro" data-pro="theme">
+    <section class="wsm-row">
       <div class="wsm-label">
-        <span data-i18n="theme">Theme</span><span class="wsm-lock" aria-hidden="true">🔒</span>
+        <span data-i18n="theme">Theme</span>
       </div>
       <div class="wsm-theme-row">
         <button type="button" data-theme="default" class="wsm-theme-card" data-color="#f97316">●</button>
@@ -89,9 +78,9 @@
       </div>
     </section>
 
-    <section class="wsm-row wsm-pins-section wsm-pro" data-pro="pin-drop">
+    <section class="wsm-row wsm-pins-section">
       <div class="wsm-label">
-        <span data-i18n="pinsLabel">Pins</span><span class="wsm-lock" aria-hidden="true">🔒</span>
+        <span data-i18n="pinsLabel">Pins</span>
       </div>
       <ul class="wsm-pins" id="pins-list"></ul>
       <div class="wsm-empty" id="pins-empty" data-i18n="pinsEmpty">No pins yet — long-press the bar to save current view</div>
@@ -103,41 +92,10 @@
 
     <footer class="wsm-foot">
       <span class="wsm-hint" data-i18n="helpHint">Long-press bar = bookmark current view · Tap pin = return · Double-tap = search</span>
-      <button type="button" class="wsm-link-btn" id="restore-btn" data-i18n="restorePurchases">Restore purchases</button>
     </footer>
 
-    <section class="wsm-admin" id="admin-panel" hidden>
-      <div class="wsm-admin-title" data-i18n="adminTitle">Admin</div>
-      <div class="wsm-row">
-        <div class="wsm-label" data-i18n="adminOverride">Tier override</div>
-        <div class="wsm-seg wsm-seg-narrow" role="radiogroup" aria-label="Admin override">
-          <button type="button" data-override="auto" data-i18n="adminAuto">Auto</button>
-          <button type="button" data-override="force-free" data-i18n="adminForceFree">Free</button>
-          <button type="button" data-override="force-pro" data-i18n="adminForcePro">Pro</button>
-        </div>
-      </div>
-      <div class="wsm-admin-stats">
-        <div class="wsm-admin-stat">
-          <div class="wsm-admin-stat-label" data-i18n="adminMonth">This month</div>
-          <div class="wsm-admin-stat-num" id="admin-month"></div>
-        </div>
-        <div class="wsm-admin-stat">
-          <div class="wsm-admin-stat-label" data-i18n="adminFreeCount">Free</div>
-          <div class="wsm-admin-stat-num" id="admin-free-count">0</div>
-        </div>
-        <div class="wsm-admin-stat">
-          <div class="wsm-admin-stat-label" data-i18n="adminProCount">Pro</div>
-          <div class="wsm-admin-stat-num" id="admin-pro-count">0</div>
-        </div>
-      </div>
-      <div class="wsm-admin-actions">
-        <button type="button" class="wsm-admin-reset" id="admin-reset" data-i18n="adminReset">Reset stats</button>
-        <button type="button" class="wsm-admin-logout" id="admin-logout" data-i18n="adminLogout">Logout</button>
-      </div>
-    </section>
-
     <div class="wsm-version-bar">
-      <span class="wsm-version" id="version-tap">v<span id="version-text">0.2.0</span></span>
+      <span class="wsm-version">v<span id="version-text">1.0.0</span></span>
     </div>
 
     <script src="/dist/popup.js"></script>

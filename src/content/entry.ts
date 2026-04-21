@@ -6,7 +6,6 @@ import { createMagnifier } from '@ui/magnifier';
 import { createSearchPanel } from '@ui/searchPanel';
 import { createSectionBadge } from '@ui/sectionBadge';
 import { createFloatingPins } from '@ui/floatingPins';
-import { createUpgradeToast } from '@ui/upgradeToast';
 import { buildSearchIndex, searchIndex, type SearchIndexEntry } from '@core/searchIndex';
 import { createObserverBus } from '@platform/observerBus';
 import { detectScrollContainer, elementTarget } from '@platform/container';
@@ -18,11 +17,8 @@ import { createPinStore } from '@core/pins';
 import { createTrailStore } from '@core/trail';
 import { loadSettings } from '@core/settings';
 import { getBrowserApi } from '@platform/browserApi';
-import { fetchEntitlement, playHaptic } from '@platform/iapBridge';
+import { playHaptic } from '@platform/iapBridge';
 import { DEFAULT_SETTINGS, isWsmMessage, type PageStatus, type PinSummary, type Settings, type WsmMessage, type WsmResponse } from '@core/messages';
-import { verifyEntitlement, type Entitlement, type Tier } from '@core/entitlement';
-import { applyTierConstraints, isFeatureAvailable, lockToastMessage } from '@core/featureGate';
-import { applyOverride, bumpStatsForTier, loadAdminConfig } from '@core/adminConfig';
 import { applySmartFilter } from '@core/smartFilter';
 import { shouldActivate } from './shouldActivate';
 import { TUNING } from '@config/tuning';
@@ -65,51 +61,21 @@ async function bootstrap(): Promise<void> {
   if (w.__WEB_SCROLL_MAP_LOADED__) return;
   w.__WEB_SCROLL_MAP_LOADED__ = true;
 
-  const browserApi = getBrowserApi();
-  // P1: 3개 독립 I/O(settings, deviceId record, adminConfig)를 병렬화 + entitlement도 동시 요청.
-  // 기존 순차 await 체인(~30ms) → Promise.all (~10ms 추정).
-  const DEVICE_KEY = 'wsm:device-id:v1';
-  const now = Date.now();
-  // 모든 I/O에 .catch 적용 — 하나가 throw해도 bootstrap 전체 실패 방지.
-  const [settingsLoaded, deviceRec, adminConfig, entitlementRaw] = await Promise.all([
-    loadSettings(browserApi.storage.local).catch(() => ({ ...DEFAULT_SETTINGS })),
-    browserApi.storage.local.get(DEVICE_KEY).catch(() => ({} as Record<string, unknown>)),
-    loadAdminConfig(browserApi.storage.local, now).catch(() => ({
-      override: 'auto' as const,
-      stats: { year: new Date(now).getFullYear(), month: new Date(now).getMonth() + 1, freeCount: 0, proCount: 0, lastSessionTier: null, lastSessionAt: 0 },
-      adminEnabled: false,
-    })),
-    fetchEntitlement().catch(() => null),
-  ]);
-  let settings: Settings = settingsLoaded;
-
-  let deviceId: string;
-  const existing = (deviceRec as Record<string, unknown>)[DEVICE_KEY] as string | undefined;
-  if (existing) {
-    deviceId = existing;
-  } else {
-    // 128-bit crypto 랜덤 (Math.random 36bit → 충돌/예측 저항 대폭 강화)
-    const buf = new Uint8Array(16);
-    crypto.getRandomValues(buf);
-    deviceId = Array.from(buf, (b) => b.toString(16).padStart(2, '0')).join('');
-    browserApi.storage.local.set({ [DEVICE_KEY]: deviceId }).catch(() => {});
-  }
-
-  let entitlement: Entitlement | null = entitlementRaw;
-  let realTier: Tier = 'free';
+  // H6: 페이지 CSS가 scroll-behavior:smooth면 우리 scrollTop=y 할당이
+  // 애니메이션으로 해석돼 연속 스크럽이 fight. 우리만 auto로 강제.
+  // 주석: inline style은 !important 없이도 대부분 페이지 CSS보다 우선.
+  // 단, 페이지 CSS에 !important가 있을 수 있어 style attr에 직접 주입.
   try {
-    realTier = verifyEntitlement(entitlement, now, deviceId);
+    const htmlEl = document.documentElement;
+    const prev = htmlEl.style.scrollBehavior;
+    if (prev !== 'auto') htmlEl.style.setProperty('scroll-behavior', 'auto', 'important');
+    if (document.body) document.body.style.setProperty('scroll-behavior', 'auto', 'important');
   } catch {
-    realTier = 'free';
+    // noop
   }
 
-  let tier: Tier = applyOverride(adminConfig.override, realTier);
-
-  // bootstrap 1회 통계 bump (병렬 — 부팅 차단 안 함)
-  void bumpStatsForTier(browserApi.storage.local, tier, now).catch(() => {});
-
-  // Free tier는 settings 강제 제약 (우측/큰 여백/테마/필터 모두 차단)
-  settings = applyTierConstraints(tier, settings);
+  const browserApi = getBrowserApi();
+  let settings: Settings = await loadSettings(browserApi.storage.local).catch(() => ({ ...DEFAULT_SETTINGS }));
 
   const deps: ScannerDeps = {
     now: () => performance.now(),
@@ -159,20 +125,14 @@ async function bootstrap(): Promise<void> {
     side: settings.side,
     palette: paletteForTheme(colorScheme, settings.theme),
     onPinTap: (pin) => {
-      // 핀 탭 → 저장된 정확한 스크롤 위치로 복귀 (오프셋 없음)
-      container.setScrollY(pin.y);
+      // 핀 탭 → 핀 doc 위치를 viewport 중앙에 맞춰 복귀 (찍은 시점과 일치).
+      container.setScrollY(Math.max(0, pin.y - container.getHeight() / 2));
     },
   });
   renderer.mount();
 
-  // Pro 기능 UI는 항상 mount (tier 변경 시 즉시 반응). 실제 노출은 tier gate.
   const magnifier = createMagnifier(host.root, colorScheme, settings.side);
   const sectionBadge = createSectionBadge(host.root, settings.side);
-  const upgradeToast = createUpgradeToast(host.root, colorScheme);
-
-  function showLock(feature: Parameters<typeof lockToastMessage>[0]) {
-    upgradeToast.show(lockToastMessage(feature));
-  }
 
   // 검색 인덱스는 지연 빌드 + idle 선빌드. 첫 검색 패널 오픈 시 5~15ms freeze 예방.
   let searchCache: ReadonlyArray<SearchIndexEntry> | null = null;
@@ -214,7 +174,7 @@ async function bootstrap(): Promise<void> {
   const floatingPins = createFloatingPins(host.root, {
     side: settings.side,
     scheme: colorScheme,
-    onJump: (pin) => container.setScrollY(pin.y),
+    onJump: (pin) => container.setScrollY(Math.max(0, pin.y - container.getHeight() / 2)),
     onDelete: (pinId) => {
       pinStore.remove(pinId);
       renderer.setPins(pinStore.list());
@@ -229,7 +189,7 @@ async function bootstrap(): Promise<void> {
 
   function scanWithFilter(): import('@core/types').ScannerResult {
     const raw = scanner.scan(currentScanRoot());
-    if (!isFeatureAvailable(tier, 'smart-filter') || settings.smartFilter === 'all') return raw;
+    if (settings.smartFilter === 'all') return raw;
     return {
       ...raw,
       anchors: applySmartFilter(raw.anchors, settings.smartFilter) as typeof raw.anchors,
@@ -238,15 +198,16 @@ async function bootstrap(): Promise<void> {
 
   let lastResult = scanWithFilter();
   renderer.update(lastResult);
-  // Pro 검색 사용자 대비 — idle에 미리 빌드 (첫 검색 시 freeze 제거)
-  if (isFeatureAvailable(tier, 'search')) scheduleIdleSearchBuild();
-  if (isFeatureAvailable(tier, 'pin-jump')) renderer.setPins(pinStore.list());
-  if (isFeatureAvailable(tier, 'trail')) renderer.setTrail(trailStore.list());
-  if (isFeatureAvailable(tier, 'floating-panel'))
-    floatingPins.update(pinStore.list(), container.getDocHeight());
+  scheduleIdleSearchBuild();
+  renderer.setPins(pinStore.list());
+  renderer.setTrail(trailStore.list());
+  floatingPins.update(pinStore.list(), container.getDocHeight());
 
+  // 스크럽 중 indicator는 finger 위치(onScrubMove)로 직접 갱신, 아니면 실제 scrollY 반영.
+  // 종료 시 즉시 null 리셋 — onScroll이 자연스럽게 실제 위치 반영.
+  let scrubCommandY: number | null = null;
   const vp = (): ViewportRect => ({
-    scrollY: container.getScrollY(),
+    scrollY: scrubCommandY !== null ? scrubCommandY : container.getScrollY(),
     height: container.getHeight(),
     docHeight: container.getDocHeight(),
   });
@@ -259,9 +220,11 @@ async function bootstrap(): Promise<void> {
   let scrollTarget: EventTarget = container.kind === 'element' && container.el ? container.el : window;
   let isScrubbing = false;
   let badgeHideTimer: ReturnType<typeof setTimeout> | null = null;
+  // 터치 종료 후 바 확장 유지 타이머 — 사용자가 연속 탭/드래그할 시간을 주기 위함.
+  let expandHoldTimer: ReturnType<typeof setTimeout> | null = null;
+  const EXPAND_HOLD_MS = 2000;
 
   function sampleTrail() {
-    if (!isFeatureAvailable(tier, 'trail')) return;
     if (document.hidden) return; // Page Visibility: 숨김 상태 샘플링 스킵
     const nowMs = performance.now();
     if (nowMs - lastTrailSampleAt < TRAIL_SAMPLE_MS) return;
@@ -274,16 +237,23 @@ async function bootstrap(): Promise<void> {
   }
 
   function onScroll() {
-    // Page Visibility: 탭 숨김 시 rAF 스킵 — 배터리 절감 (iOS 장시간 독서 경감 주효과)
     if (document.hidden) return;
+    if (isScrubbing) return;
+    // scrubCommandY는 unclamped(바 경계에서 음수/초과 가능)이므로 clamp 후 비교.
+    if (scrubCommandY !== null) {
+      const actual = container.getScrollY();
+      const maxScroll = Math.max(0, container.getDocHeight() - container.getHeight());
+      const expected = Math.max(0, Math.min(maxScroll, scrubCommandY));
+      if (Math.abs(actual - expected) <= 100) {
+        scrubCommandY = null;
+      }
+    }
     if (scrollTicking) return;
     scrollTicking = true;
     requestAnimationFrame(() => {
       renderer.highlight('slim', vp());
       sampleTrail();
-      if (isFeatureAvailable(tier, 'section-badge')) {
-        sectionBadge.update(container.getScrollY(), lastResult.anchors);
-      }
+      sectionBadge.update(container.getScrollY(), lastResult.anchors);
       scrollTicking = false;
     });
   }
@@ -303,95 +273,73 @@ async function bootstrap(): Promise<void> {
     }
   }
 
-  // tier가 바뀌면 UI 전부 재평가 (entitlement-changed / admin-override-changed 공통 경로)
-  async function applyTierRefresh() {
-    const cfg = await loadAdminConfig(browserApi.storage.local, Date.now()).catch(() => null);
-    const override = cfg?.override ?? 'auto';
-    tier = applyOverride(override, realTier);
-    settings = applyTierConstraints(tier, settings);
-    applyPositionStyle();
-    // Free로 강등 시 side가 'left'로 바뀔 수 있음 — renderer/UI 방향도 동기화.
-    renderer.setSide(settings.side);
-    magnifier.setSide(settings.side);
-    sectionBadge.setSide(settings.side);
-    floatingPins.setSide(settings.side);
-    floatingPins.setOpacity(settings.floatingOpacity);
-    renderer.setPalette(paletteForTheme(colorScheme, settings.theme));
-    lastResult = scanWithFilter();
-    renderer.update(lastResult);
-    if (isFeatureAvailable(tier, 'pin-jump')) renderer.setPins(pinStore.list());
-    else renderer.setPins([]);
-    if (isFeatureAvailable(tier, 'trail')) renderer.setTrail(trailStore.list());
-    else renderer.setTrail([]);
-    if (isFeatureAvailable(tier, 'floating-panel')) {
-      floatingPins.update(pinStore.list(), container.getDocHeight());
-    } else {
-      floatingPins.update([], container.getDocHeight());
-    }
-    renderer.highlight('slim', vp());
-  }
-
   const hostEl = host.host;
   const scrubber = createScrubber(hostEl, {
-    scrollTo: (y) => container.setScrollY(y),
+    scrollTo: (y) => {
+      // 페이지 scroll은 EMA+rounded 값으로 (스크럽 중 잔 oscillation 방지).
+      container.setScrollY(y);
+    },
+    // 스크럽 중 indicator는 finger 원위치를 즉시 따라감 (EMA/round/scroll-feedback 우회).
+    onScrubMove: (rawY) => {
+      if (!isScrubbing) return;
+      scrubCommandY = rawY;
+      renderer.highlight('slim', vp());
+    },
     snapCandidates: () => lastResult.anchors.map((a) => a.y),
     getDocHeight: () => container.getDocHeight(),
     getViewportHeight: () => container.getHeight(),
     onHaptic: (kind) => {
-      if (isFeatureAvailable(tier, 'haptic')) playHaptic(kind);
+      playHaptic(kind);
     },
     onLongPress: (barDocY) => {
-      if (!isFeatureAvailable(tier, 'pin-drop')) {
-        showLock('pin-drop');
-        return;
-      }
-      // 바 누른 위치를 뷰포트 중앙에 맞춰 페이지 스크롤 → 실제 scrollY를 핀으로 저장
-      // (clamping 반영, 다른곳 길게 누르면 그곳으로 이동)
-      const targetScrollY = Math.max(0, barDocY - container.getHeight() / 2);
-      container.setScrollY(targetScrollY);
-      const actualScrollY = container.getScrollY(); // 브라우저 clamping 후 실제 값
-      const label = findNearestHeadingLabel(
-        actualScrollY + container.getHeight() / 2,
-        lastResult.anchors,
-      );
-      const added = pinStore.add(label ? { y: actualScrollY, label } : { y: actualScrollY });
+      // 꾹 누른 바 위치(doc Y)에 핀 — 화면 이동 없음. 손가락 위치 = 핀 위치.
+      const label = findNearestHeadingLabel(barDocY, lastResult.anchors);
+      const added = pinStore.add(label ? { y: barDocY, label } : { y: barDocY });
       if (added) {
         renderer.setPins(pinStore.list());
         floatingPins.update(pinStore.list(), container.getDocHeight());
         playHaptic('pin');
       }
+      // long-press fire 이후 scrubCommandY를 실제 scroll로 되돌려 indicator가 stuck 방지.
+      // (터치 초기 onScrubMove로 finger 위치에 이동했지만 스크롤은 gated였음.)
+      scrubCommandY = null;
+      renderer.highlight('slim', vp());
     },
     onStateChange: (state) => {
       isScrubbing = state === 'scrubbing';
       if (isScrubbing) {
+        scrubCommandY = null;
         host.host.classList.add('wsm-expanded');
         sectionBadge.show();
         if (badgeHideTimer !== null) {
           clearTimeout(badgeHideTimer);
           badgeHideTimer = null;
         }
+        if (expandHoldTimer !== null) {
+          clearTimeout(expandHoldTimer);
+          expandHoldTimer = null;
+        }
       } else {
-        host.host.classList.remove('wsm-expanded');
+        // 스크럽 종료 — EXPAND_HOLD_MS(2초) 동안 바 확장 유지 (연속 탭 대응).
+        // scrubCommandY는 유지 — 다음 onScroll이 자연스럽게 이어감 (tap 직후
+        // stale scrollY 읽혀 indicator가 원위치로 점프하는 것 방지).
         magnifier.hide();
-        // 배지는 스크럽 끝난 뒤 잠깐 유지 후 페이드 (UX 친절)
+        if (expandHoldTimer !== null) clearTimeout(expandHoldTimer);
+        expandHoldTimer = setTimeout(() => {
+          host.host.classList.remove('wsm-expanded');
+          expandHoldTimer = null;
+        }, EXPAND_HOLD_MS);
         badgeHideTimer = setTimeout(() => {
           sectionBadge.hide();
           badgeHideTimer = null;
-        }, 900);
+        }, EXPAND_HOLD_MS + 200);
       }
     },
     onMagnify: (clientY, docY) => {
-      if (!isFeatureAvailable(tier, 'magnifier')) return;
       magnifier.show(clientY, docY, lastResult);
-      if (isFeatureAvailable(tier, 'section-badge')) {
-        sectionBadge.update(docY, lastResult.anchors);
-      }
+      sectionBadge.update(docY, lastResult.anchors);
     },
     onDoubleTap: () => {
-      if (!isFeatureAvailable(tier, 'search')) {
-        showLock('search');
-        return;
-      }
       if (searchPanel.isOpen()) searchPanel.close();
       else searchPanel.open();
     },
@@ -400,19 +348,20 @@ async function bootstrap(): Promise<void> {
   const bus = createObserverBus(document);
   const muteDisposable = bus.onMutation(
     () => {
+      // H4 + H-REL-3: scrubCommandY override 살아있으면 stale scrollY로 렌더링 위험 — 스킵.
+      if (isScrubbing || scrubCommandY !== null) return;
       lastResult = scanWithFilter();
       renderer.update(lastResult);
       renderer.highlight('slim', vp());
       invalidateSearchIndex();
       reevaluateActivation();
-      if (isFeatureAvailable(tier, 'section-badge')) {
-        sectionBadge.update(container.getScrollY(), lastResult.anchors);
-      }
+      sectionBadge.update(container.getScrollY(), lastResult.anchors);
     },
     { debounceMs: TUNING.mutationDebounceMs },
   );
 
   const spaDisposable = bus.onSpaNavigate(() => {
+    if (isScrubbing || scrubCommandY !== null) return;
     lastResult = scanWithFilter();
     renderer.update(lastResult);
     renderer.setPins([]);
@@ -428,16 +377,14 @@ async function bootstrap(): Promise<void> {
   });
 
   const vvDisposable = bus.onVisualViewportChange(() => {
+    // H4: 스크럽 중이면 스킵. H-REL-3: scrub 종료 직후 scrubCommandY가 아직 설정된
+    // 상태에서 vv change가 발화하면 stale container.getScrollY()로 렌더 → 상단 점프.
+    if (isScrubbing || scrubCommandY !== null) return;
     renderer.highlight('slim', vp());
   });
 
-  // 수동 피커 (Pro 전용)
   let activePicker: Disposable | null = null;
   function startManualPicker() {
-    if (!isFeatureAvailable(tier, 'manual-picker')) {
-      showLock('manual-picker');
-      return;
-    }
     activePicker?.dispose();
     activePicker = createManualPicker({
       onPicked(el) {
@@ -473,7 +420,13 @@ async function bootstrap(): Promise<void> {
         return false;
       }
       case 'settings-changed': {
-        settings = applyTierConstraints(tier, msg.settings);
+        // H2: 스크럽 중이면 host 위치 변경이 cachedRect를 stale로 만들므로 defer.
+        // 스크럽 종료 후 다음 settings-changed 또는 mutation에서 반영됨.
+        if (isScrubbing) {
+          sendResponse({ ok: true } satisfies WsmResponse);
+          return false;
+        }
+        settings = { ...settings, ...msg.settings };
         applyPositionStyle();
         // side 변경 시 모든 side-aware UI 업데이트 (매그니파이/섹션 배지/플로팅 패널 방향)
         renderer.setSide(settings.side);
@@ -487,26 +440,6 @@ async function bootstrap(): Promise<void> {
         renderer.highlight('slim', vp());
         sendResponse({ ok: true } satisfies WsmResponse);
         return false;
-      }
-      case 'entitlement-changed': {
-        entitlement = msg.entitlement;
-        realTier = msg.tier;
-        // async — await 후 응답해야 다음 메시지와 레이스 방지. 예외 시에도 응답 보장.
-        applyTierRefresh()
-          .then(() => sendResponse({ ok: true } satisfies WsmResponse))
-          .catch((e: unknown) =>
-            sendResponse({ ok: false, error: String(e) } satisfies WsmResponse),
-          );
-        return true;
-      }
-      case 'admin-override-changed': {
-        // admin 설정 변경 → tier 재평가. entitlement는 유지.
-        applyTierRefresh()
-          .then(() => sendResponse({ ok: true } satisfies WsmResponse))
-          .catch((e: unknown) =>
-            sendResponse({ ok: false, error: String(e) } satisfies WsmResponse),
-          );
-        return true;
       }
       case 'clear-pins': {
         pinStore.clear();
@@ -534,12 +467,13 @@ async function bootstrap(): Promise<void> {
         return false;
       }
       case 'get-entitlement': {
-        sendResponse({ ok: true, entitlement, tier } satisfies WsmResponse);
+        // 레거시 호환 — tier 제거됐으므로 항상 pro 반환 (UI는 모두 unlocked).
+        sendResponse({ ok: true, entitlement: null, tier: 'pro' } satisfies WsmResponse);
         return false;
       }
       case 'jump-to-pin': {
         const found = pinStore.list().find((p) => p.id === msg.pinId);
-        if (found) container.setScrollY(found.y);
+        if (found) container.setScrollY(Math.max(0, found.y - container.getHeight() / 2));
         sendResponse({ ok: true } satisfies WsmResponse);
         return false;
       }
@@ -584,18 +518,18 @@ async function bootstrap(): Promise<void> {
   // Page Visibility: 탭 재노출 시 전체 재동기화 — hidden 중 DOM 변경/스크롤 반영.
   // observerBus가 hidden 동안 mutation callback을 스킵했으므로 수동 재스캔 필수.
   const onVisibilityChange = () => {
+    // H-REL-3: 스크럽 중 또는 scrubCommandY override가 살아있으면 스킵 (상단 점프 방지).
+    if (isScrubbing || scrubCommandY !== null) return;
     if (!document.hidden) {
       lastResult = scanWithFilter();
       renderer.update(lastResult);
       renderer.highlight('slim', vp());
-      if (isFeatureAvailable(tier, 'section-badge')) {
-        sectionBadge.update(container.getScrollY(), lastResult.anchors);
-      }
+      sectionBadge.update(container.getScrollY(), lastResult.anchors);
     }
   };
   document.addEventListener('visibilitychange', onVisibilityChange);
 
-  const disposables: Disposable[] = [scrubber, muteDisposable, spaDisposable, vvDisposable, searchPanel, sectionBadge, floatingPins, upgradeToast];
+  const disposables: Disposable[] = [scrubber, muteDisposable, spaDisposable, vvDisposable, searchPanel, sectionBadge, floatingPins];
   let tornDown = false;
   function teardown() {
     if (tornDown) return;
@@ -605,6 +539,7 @@ async function bootstrap(): Promise<void> {
     document.removeEventListener('visibilitychange', onVisibilityChange);
     window.removeEventListener('resize', onResize);
     if (badgeHideTimer !== null) clearTimeout(badgeHideTimer);
+    if (expandHoldTimer !== null) clearTimeout(expandHoldTimer);
     activePicker?.dispose();
     activePicker = null;
     for (const d of disposables) d.dispose();

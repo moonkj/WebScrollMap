@@ -467,3 +467,54 @@ body {
   padding: 2px 0;
   text-decoration: underline;
 }
+
+/* Admin password prompt (iOS popup에서 window.prompt 차단 → 인라인 폼) */
+.wsm-admin-prompt {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0;
+  padding: 10px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.wsm-admin-prompt[hidden] { display: none; }
+.wsm-admin-prompt-label {
+  font: 600 11px -apple-system, system-ui, sans-serif;
+  color: var(--fg);
+}
+.wsm-admin-prompt-input {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg);
+  padding: 6px 8px;
+  border-radius: 6px;
+  font: 14px -apple-system, system-ui, sans-serif;
+}
+.wsm-admin-prompt-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.wsm-admin-prompt-actions button {
+  appearance: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font: 12px -apple-system, system-ui, sans-serif;
+  cursor: pointer;
+}
+.wsm-admin-prompt-actions button.wsm-primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.wsm-admin-prompt-error {
+  color: #ef4444;
+  font: 11px -apple-system, system-ui, sans-serif;
+}
+.wsm-admin-prompt-error[hidden] { display: none; }

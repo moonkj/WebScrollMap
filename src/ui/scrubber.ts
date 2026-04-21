@@ -1,5 +1,6 @@
-// RAF throttle + passive touch. scrollTo 즉시 모드 (D6).
-// H1 엣지 스와이프: 엣지 0~EDGE_MARGIN 영역은 브라우저 제스처에 양보 (EDGE_MARGIN=16).
+// 스크럽 바 터치 핸들러 — 최소 구현.
+// 원칙: 사용자 finger 위치 → scroll 직접 매핑. 필터/deadband/force commit 제거.
+// 누적된 방어 레이어가 상호 간섭해 점프/인식 실패 유발 → 근본으로 회귀.
 
 import { TUNING } from '@config/tuning';
 import { snapToAnchor } from '@core/snap';
@@ -8,7 +9,6 @@ import type { Disposable } from '@core/types';
 export const SNAP_THRESHOLD = TUNING.snapThresholdPx;
 export const EDGE_MARGIN = TUNING.edgeMarginPx;
 export const LONG_PRESS_MS = 500;
-// iOS 터치 흔들림 현실 반영: 10px 이내는 같은 지점으로 간주.
 export const LONG_PRESS_MOVE_TOLERANCE_PX = 10;
 export const DOUBLE_TAP_MS = 280;
 export const DOUBLE_TAP_MOVE_TOLERANCE_PX = 12;
@@ -23,40 +23,44 @@ export interface ScrubberApi {
   onLongPress?(y: number): void;
   onMagnify?(clientY: number, docY: number): void;
   onDoubleTap?(): void;
+  /** 스크럽 중 finger 위치 즉시 전달 — indicator UI 업데이트용 */
+  onScrubMove?(scrollY: number): void;
 }
 
-// 이벤트가 실제 미니맵 track(.wsm-track) 위에서 발생했는지 확인.
-// 플로팅 패널/검색 패널 등 shadow 내 다른 UI에 대한 터치는 스크러버를 건너뛴다.
-function isTrackEvent(e: Event): boolean {
+// 이벤트가 scrubber의 대상(host 또는 shadow 내 track)에서 발생했는지 확인.
+// 플로팅 패널 등 다른 shadow UI의 wsm-fp-* 요소는 제외.
+function isTrackEvent(e: Event, hostEl: HTMLElement): boolean {
   const path = e.composedPath();
+  // 1) path에 .wsm-track이 있으면 track 터치
   for (const n of path) {
-    if (n instanceof Element && n.classList && n.classList.contains('wsm-track')) {
-      return true;
+    if (n instanceof Element && n.classList) {
+      if (n.classList.contains('wsm-track')) return true;
+      // 플로팅 패널/버블/검색창 등은 exclude
+      const cn = n.className;
+      if (typeof cn === 'string' && (cn.startsWith('wsm-fp-') || cn.startsWith('wsm-search') || cn.includes('wsm-section-badge') || cn.includes('wsm-upgrade-toast'))) {
+        return false;
+      }
     }
   }
+  // 2) target이 host 자체면 track 누락 대응 (iOS composedPath 변수 대응)
+  if (path[0] === hostEl) return true;
   return false;
 }
 
-// iOS 터치 좌표는 ±1~2px jitter가 있음. 긴 페이지(docH 20,000+)에서 이 노이즈가
-// 20배 증폭돼 "따닥따닥" 현상 발생. EMA 저역필터로 평활화 (threshold 대신).
-const EMA_ALPHA = 0.35; // 높을수록 반응 빠르고 노이즈 증가. 0.3~0.4 권장.
-
 export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
+  let active = false;
   let ticking = false;
   let pendingY: number | null = null;
-  let smoothedClientY = 0; // EMA state
-  let lastAppliedScrollY = Number.NEGATIVE_INFINITY;
-  let active = false;
-  // Sev2 fix: layout thrash 방지. rect는 pointerdown 및 resize에서만 갱신.
-  let cachedRect: { top: number; height: number } = { top: 0, height: 0 };
+  let cachedRect = { top: 0, height: 0 };
+
   // Long-press for Pin Drop
   let longPressTimer: ReturnType<typeof setTimeout> | null = null;
   let longPressDownX = 0;
   let longPressDownY = 0;
   let longPressFired = false;
-  // Sev1 fix: pin 후보 기간 동안엔 scroll을 보류. 실제 scrub은 move/시간초과 이후.
   let scrollGated = false;
-  // Double tap 감지
+
+  // Double-tap state
   let lastTapAt = 0;
   let lastTapX = 0;
   let lastTapY = 0;
@@ -75,152 +79,132 @@ export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
   }
 
   function inEdgeZone(clientX: number): boolean {
-    const w = window.innerWidth;
-    return clientX > w - EDGE_MARGIN;
+    return clientX > window.innerWidth - EDGE_MARGIN;
   }
 
-  // 탭/스크럽용: pct × maxScroll 스크롤 좌표. setScrollY에 직접 전달.
-  // 결과: indicator 중심이 탭 위치와 정렬 (min-height 적용 후에도 유지).
   function mapEventToY(clientY: number): number {
     const h = cachedRect.height || 1;
     const pct = Math.max(0, Math.min(1, (clientY - cachedRect.top) / h));
     const docH = api.getDocHeight();
     const vpH = api.getViewportHeight();
-    const maxScroll = Math.max(0, docH - vpH);
-    return pct * maxScroll;
+    // 손가락 = viewport 중앙 = 인디케이터 중앙. clamp 없음 — 바 경계에서도 중앙 유지.
+    // 브라우저가 scrollTop을 [0, docH-vpH]로 자연 clamp. 인디케이터는 center-preserving shrink.
+    return pct * docH - vpH / 2;
   }
 
-  // 핀용: 문서 좌표 (pct × docH). 렌더러가 y/docH*100%로 마커 배치하므로
-  // 누른 바 위치와 마커가 정확 일치.
   function mapEventToDocY(clientY: number): number {
     const h = cachedRect.height || 1;
     const pct = Math.max(0, Math.min(1, (clientY - cachedRect.top) / h));
     return pct * api.getDocHeight();
   }
 
-  // 스크럽 중엔 snap 없이 자유 스크롤 (사용자 피드백: "작은 움직임이 같은 위치 왔다갔다")
-  // 스냅은 pointerup(손 뗄 때)에만 적용 → applyFinalSnap
   function applyScroll() {
-    if (pendingY === null) {
-      ticking = false;
-      return;
-    }
-    const rounded = Math.round(pendingY);
-    // 같은 target 연속 scrollTo 생략 (iOS Safari scroll 이벤트 폭증 방지)
-    if (rounded !== lastAppliedScrollY) {
-      lastAppliedScrollY = rounded;
-      api.scrollTo(rounded);
-    }
+    const snapshot = pendingY;
     pendingY = null;
     ticking = false;
+    if (snapshot === null) return;
+    api.scrollTo(Math.round(snapshot));
+      
   }
 
-  function applyFinalSnap(clientY: number) {
-    const docY = mapEventToY(clientY);
-    const candidates = api.snapCandidates();
-    const snapped = snapToAnchor(docY, candidates);
-    if (snapped.snapped) {
-      api.onHaptic?.('snap');
-    }
-    api.scrollTo(snapped.y);
+  function schedule() {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(applyScroll);
   }
 
   function onPointerDown(e: PointerEvent) {
-    // 플로팅 패널/검색 패널 등 track이 아닌 shadow 요소에 대한 포인터는 무시
-    if (!isTrackEvent(e)) return;
-    if (e.pointerType === 'touch' && inEdgeZone(e.clientX)) {
-      // 엣지 양보 (뒤로가기 제스처 우선)
-      api.onHaptic?.('edge');
-      return;
-    }
+    if (!isTrackEvent(e, el)) return;
+    // 엣지 존 체크 제거 — 바 우측 경계(innerWidth-16)와 edge zone(>innerWidth-16)이
+    // 겹쳐 정당한 바 터치가 차단되는 버그. 뒤로가기 제스처는 iOS가 알아서 처리.
     active = true;
     moved = false;
     longPressFired = false;
     longPressDownX = e.clientX;
     longPressDownY = e.clientY;
-    smoothedClientY = e.clientY; // EMA 초기값 = 첫 터치 좌표 (warmup 없음)
-    lastAppliedScrollY = Number.NEGATIVE_INFINITY;
     refreshRect();
     api.onStateChange?.('scrubbing');
-    api.onMagnify?.(e.clientY, mapEventToY(e.clientY));
-    try {
-      el.setPointerCapture(e.pointerId);
-    } catch {
-      // pointerId invalid — ignore
-    }
+    const initialY = mapEventToY(e.clientY);
+    api.onMagnify?.(e.clientY, initialY);
+    // 초기 터치 즉시 indicator를 finger 위치로 이동 — long-press hold 중에도
+    // indicator가 손가락 따라감. 이전엔 움직이기 전까지 stale scrollY 표시.
+    api.onScrubMove?.(initialY);
+    // setPointerCapture 제거 — document 레벨 리스너가 있으므로 capture 없어도 OK.
+    // iOS에서 capture가 document 이벤트 전파를 방해하는 가능성 차단.
 
-    // Long-press for Pin Drop: pin 후보 기간엔 scroll 보류 (Sev1 fix).
-    // 움직이지 않고 타이머 만료 → pin. 움직이면 scrub 전환 + gate 해제.
     if (api.onLongPress) {
       scrollGated = true;
-      // 핀은 문서 좌표 — 렌더러 마커와 정확 일치.
       const targetDocY = mapEventToDocY(e.clientY);
       longPressTimer = setTimeout(() => {
         longPressTimer = null;
         longPressFired = true;
         api.onHaptic?.('pin');
         api.onLongPress?.(targetDocY);
-        scrollGated = true; // pin 발화 후에도 scroll 계속 보류
       }, LONG_PRESS_MS);
     } else {
       scrollGated = false;
-      pendingY = mapEventToY(e.clientY);
-      if (!ticking) {
-        ticking = true;
-        requestAnimationFrame(applyScroll);
-      }
+      pendingY = initialY;
+      schedule();
     }
   }
 
   function onPointerMove(e: PointerEvent) {
     if (!active) return;
-    // Sev2 fix: x/y 합성 거리로 판정
-    if (longPressTimer !== null) {
-      const dx = e.clientX - longPressDownX;
-      const dy = e.clientY - longPressDownY;
-      if (Math.hypot(dx, dy) > LONG_PRESS_MOVE_TOLERANCE_PX) {
-        clearLongPress();
-        scrollGated = false; // scrub 시작
-      }
+    if (e.isPrimary === false) return;
+    const dx = e.clientX - longPressDownX;
+    const dy = e.clientY - longPressDownY;
+    const dist = Math.hypot(dx, dy);
+    if (longPressTimer !== null && dist > LONG_PRESS_MOVE_TOLERANCE_PX) {
+      clearLongPress();
+      scrollGated = false;
+      // long-press 취소 직후 첫 move에서 indicator를 즉시 finger로 동기화.
+      // 이전엔 이 프레임에서 onScrubMove 호출 누락 → indicator가 stale scrollY로 그려져
+      // "finger가 indicator 하단에 있음" 증상 유발.
+      const y = mapEventToY(e.clientY);
+      pendingY = y;
+      api.onScrubMove?.(y);
+      api.onMagnify?.(e.clientY, y);
+      schedule();
+      return;
     }
-    const mdx = e.clientX - longPressDownX;
-    const mdy = e.clientY - longPressDownY;
-    if (Math.hypot(mdx, mdy) > DOUBLE_TAP_MOVE_TOLERANCE_PX) moved = true;
-    if (longPressFired) return; // pin fired; don't also scrub
+    if (dist > DOUBLE_TAP_MOVE_TOLERANCE_PX) moved = true;
+    if (longPressFired) return;
     if (scrollGated) return;
-    // EMA 저역필터 — 1~2px 노이즈 평활화, 큰 이동은 그대로 반응
-    smoothedClientY = smoothedClientY * (1 - EMA_ALPHA) + e.clientY * EMA_ALPHA;
-    pendingY = mapEventToY(smoothedClientY);
-    api.onMagnify?.(e.clientY, pendingY);
-    if (!ticking) {
-      ticking = true;
-      requestAnimationFrame(applyScroll);
-    }
+     
+
+    // 원칙: clientY → scroll 직접 매핑. 필터 없음. rAF throttle로 paint 정렬.
+    const y = mapEventToY(e.clientY);
+    pendingY = y;
+    api.onScrubMove?.(y);
+    api.onMagnify?.(e.clientY, y);
+    schedule();
   }
 
   function onPointerUp(e?: PointerEvent) {
     if (!active) return;
-    // Tap-to-jump: long-press 타이머 발화 전 + 핀 미발화 + gate 활성 → 사용자 의도는 탭 점프.
+    // Tap-to-jump: long-press 타이머 발화 전 + 핀 미발화 + gate 활성
     if (longPressTimer !== null && !longPressFired && scrollGated && e) {
-      pendingY = mapEventToY(e.clientY);
-      if (!ticking) {
-        ticking = true;
-        requestAnimationFrame(applyScroll);
-      }
+      const y = mapEventToY(e.clientY);
+      pendingY = y;
+      // indicator 즉시 이동 (scroll 반영 지연 방지)
+      api.onScrubMove?.(y);
+      schedule();
     }
-    // 스크럽 종료 시 마지막 위치 스냅 (드래그 중엔 자유 스크롤이었음)
+    // Final snap haptic (scroll은 이미 사용자가 원하는 위치에 있음)
     if (e && !longPressFired && !scrollGated) {
-      applyFinalSnap(e.clientY);
+      const docY = mapEventToY(e.clientY);
+      const snapped = snapToAnchor(docY, api.snapCandidates());
+      if (snapped.snapped) api.onHaptic?.('snap');
     }
-    // Double-tap 감지: 움직이지 않은 짧은 탭이 연속 2번 + 핀 미발화
+    // Double-tap
     if (e && !moved && !longPressFired) {
       const now = performance.now();
-      const dx = Math.abs(e.clientX - lastTapX);
-      const dy = Math.abs(e.clientY - lastTapY);
+      const adx = Math.abs(e.clientX - lastTapX);
+      const ady = Math.abs(e.clientY - lastTapY);
       if (
         now - lastTapAt < DOUBLE_TAP_MS &&
-        dx < DOUBLE_TAP_MOVE_TOLERANCE_PX * 2 &&
-        dy < DOUBLE_TAP_MOVE_TOLERANCE_PX * 4
+        adx < DOUBLE_TAP_MOVE_TOLERANCE_PX * 2 &&
+        ady < DOUBLE_TAP_MOVE_TOLERANCE_PX * 4
       ) {
         api.onDoubleTap?.();
         lastTapAt = 0;
@@ -239,29 +223,68 @@ export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
 
   const onUpEvt = (e: PointerEvent) => onPointerUp(e);
   const onCancelEvt = () => onPointerUp();
-  // iOS: touchstart preventDefault로 네이티브 텍스트 선택/콜아웃 차단. passive:false 필수.
-  // track에서만 막음 — 플로팅 패널/검색 패널에서의 탭은 그대로 통과.
   const onTouchStart = (e: TouchEvent) => {
-    if (!isTrackEvent(e)) return;
+    if (!isTrackEvent(e, el)) return;
     if (e.cancelable) e.preventDefault();
   };
+
+  // iOS Safari fallback: pointer events가 발화 안 되는 경우 touch events로 대체.
+  // 같은 핸들러 로직 재사용 — PointerEvent와 TouchEvent를 공통 인터페이스로 처리.
+  interface PointLike { clientX: number; clientY: number; pointerId: number; pointerType: string; isPrimary: boolean; composedPath(): EventTarget[] }
+  function touchToPointLike(e: TouchEvent, t: Touch): PointLike {
+    return {
+      clientX: t.clientX,
+      clientY: t.clientY,
+      pointerId: t.identifier,
+      pointerType: 'touch',
+      isPrimary: true,
+      composedPath: () => e.composedPath(),
+    };
+  }
+  const onTouchMove = (e: TouchEvent) => {
+     
+    if (!active) return;
+    const t = e.touches[0];
+    if (!t) return;
+    onPointerMove(touchToPointLike(e, t) as unknown as PointerEvent);
+  };
+  const onTouchEnd = (e: TouchEvent) => {
+     
+    if (!active) return;
+    const t = e.changedTouches[0];
+    if (!t) { onPointerUp(); return; }
+    onPointerUp(touchToPointLike(e, t) as unknown as PointerEvent);
+  };
+
+  // document 레벨 touchmove 차단 제거 — iOS에서 touchmove preventDefault가
+  // pointer events 발화를 막는 현상 의심 (드래그 무반응 버그).
+  // iOS 네이티브 scroll fight는 host의 touch-action:none + touchmove 로컬 block으로 대응.
+
+  // pointerdown은 host 기준 (isTrackEvent 필터 통과 시 active=true).
+  // move/up은 document 기준 — host 경계 밖으로 드리프트해도 capture 유지.
   el.addEventListener('pointerdown', onPointerDown);
-  el.addEventListener('pointermove', onPointerMove);
-  el.addEventListener('pointerup', onUpEvt);
-  el.addEventListener('pointercancel', onCancelEvt);
+  document.addEventListener('pointermove', onPointerMove);
+  document.addEventListener('pointerup', onUpEvt);
+  document.addEventListener('pointercancel', onCancelEvt);
   el.addEventListener('touchstart', onTouchStart, { passive: false });
-  el.addEventListener('touchmove', onTouchStart, { passive: false });
-  window.addEventListener('resize', refreshRect, { passive: true });
+  // iOS fallback: touch events로 동일 흐름 구동 (pointer events 미발화 대응).
+  document.addEventListener('touchmove', onTouchMove, { passive: true });
+  document.addEventListener('touchend', onTouchEnd, { passive: true });
+  document.addEventListener('touchcancel', onTouchEnd, { passive: true });
+  const onWinResize = () => { if (!active) refreshRect(); };
+  window.addEventListener('resize', onWinResize, { passive: true });
 
   return {
     dispose() {
       el.removeEventListener('pointerdown', onPointerDown);
-      el.removeEventListener('pointermove', onPointerMove);
-      el.removeEventListener('pointerup', onUpEvt);
-      el.removeEventListener('pointercancel', onCancelEvt);
+      document.removeEventListener('pointermove', onPointerMove);
+      document.removeEventListener('pointerup', onUpEvt);
+      document.removeEventListener('pointercancel', onCancelEvt);
       el.removeEventListener('touchstart', onTouchStart);
-      el.removeEventListener('touchmove', onTouchStart);
-      window.removeEventListener('resize', refreshRect);
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', onTouchEnd);
+      document.removeEventListener('touchcancel', onTouchEnd);
+      window.removeEventListener('resize', onWinResize);
     },
   };
 }

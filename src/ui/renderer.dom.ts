@@ -83,9 +83,9 @@ export function createDomRenderer(root: ShadowRoot, opts: RendererOptions): Mini
     },
     highlight(_state: MinimapState, viewport: ViewportRect) {
       const style = computeIndicatorStyle(viewport);
-      // toFixed(1)로 정밀도 낮춤 → 불필요한 DOM 변경 최소화 (깜빡임 완화)
-      const newTop = `${style.topPct.toFixed(1)}%`;
-      const newH = `${style.heightPct.toFixed(1)}%`;
+      // H8: 0.1% 경계 양자화로 "57.5% ↔ 57.6%" 왕복 jitter 발생. 0.01%로 상향 → 10배 덜 민감.
+      const newTop = `${style.topPct.toFixed(2)}%`;
+      const newH = `${style.heightPct.toFixed(2)}%`;
       if (indicator.style.top !== newTop) indicator.style.top = newTop;
       if (indicator.style.height !== newH) indicator.style.height = newH;
       const docH = viewport.docHeight || docHeight || 1;

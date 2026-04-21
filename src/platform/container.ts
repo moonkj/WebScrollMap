@@ -28,9 +28,13 @@ export function windowTarget(win: Window = window, doc: Document = document): Co
   return {
     kind: 'window',
     el: null,
-    getScrollY: () => win.scrollY,
-    // scrollingElement.scrollTop 직접 할당: scrollTo(x,y)보다 iOS Safari 내부 스크롤과
-    // 덜 충돌. 연속 호출 시 깜빡임·따닥따닥 완화.
+    // H-REL-4: getScrollY와 setScrollY 좌표원을 일치. 이전엔 getScrollY가 win.scrollY,
+    // setScrollY가 scrollingElement.scrollTop을 써서 iOS Safari에서 비대칭이 jitter 유발.
+    getScrollY: () => {
+      const el = scrollEl() as HTMLElement;
+      return el.scrollTop;
+    },
+    // scrollTop 직접 할당 — 가장 단순, 확실. win.scrollTo는 smooth 스크롤로 해석되는 경우 있음.
     setScrollY: (y) => {
       const el = scrollEl() as HTMLElement;
       el.scrollTop = y;

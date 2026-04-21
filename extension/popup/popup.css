@@ -361,71 +361,6 @@ body {
   box-shadow: 0 0 0 2px var(--accent);
 }
 
-/* Admin panel */
-.wsm-admin {
-  margin-top: 8px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px dashed var(--accent);
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
-}
-.wsm-admin-title {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  color: var(--accent);
-  text-transform: uppercase;
-  margin-bottom: 4px;
-}
-.wsm-admin-stats {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 6px;
-  margin: 8px 0;
-}
-.wsm-admin-stat {
-  background: var(--surface);
-  padding: 6px 8px;
-  border-radius: 6px;
-  text-align: center;
-}
-.wsm-admin-stat-label {
-  font-size: 10px;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.wsm-admin-stat-num {
-  font: 700 15px -apple-system, system-ui, sans-serif;
-  color: var(--fg);
-  font-variant-numeric: tabular-nums;
-  margin-top: 2px;
-}
-.wsm-admin-actions {
-  display: flex;
-  gap: 6px;
-}
-.wsm-admin-reset,
-.wsm-admin-logout {
-  appearance: none;
-  flex: 1 1 0;
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--muted);
-  padding: 6px;
-  border-radius: 6px;
-  cursor: pointer;
-  font: 11px -apple-system, system-ui, sans-serif;
-}
-.wsm-admin-reset:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-.wsm-admin-logout:hover {
-  border-color: #ef4444;
-  color: #ef4444;
-}
-
 /* Version bar */
 .wsm-version-bar {
   margin-top: 6px;
@@ -442,14 +377,6 @@ body {
   padding: 4px 8px;
   border-radius: 4px;
 }
-.wsm-version:active {
-  color: var(--fg);
-  background: var(--surface);
-}
-.wsm-version.wsm-unlocking {
-  color: var(--accent);
-}
-
 /* Restore link */
 .wsm-foot {
   display: flex;
@@ -467,3 +394,4 @@ body {
   padding: 2px 0;
   text-decoration: underline;
 }
+
