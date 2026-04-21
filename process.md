@@ -314,3 +314,27 @@ Architect 판단: 실기기 불필요한 영역 집중 처리.
 
 **검증**: Typecheck / 314 tests / 빌드 (content 49.19KB / background 3.33KB / popup 5.62KB)
 
+### [37] App Store Connect 업로드 — 1.0.0 build 1/2
+- **build 1** (햅틱 CoreHaptics 포함 버전) 업로드
+- **build 2** (햅틱 완전 제거 + 파도 리플 + visualViewport 정합) 업로드
+- CURRENT_PROJECT_VERSION = 1 → 2 증가
+- `xcodebuild archive` + `exportArchive` (method: app-store-connect) 자동 업로드 성공
+- GitHub Pages 활성화 (`gh api POST /repos/.../pages` with source.branch=main, source.path=/docs) 후 `privacy.html`/`support.html` 200 OK 확인
+- 6개 언어 Description/Promotional Text/Keywords 작성 (ko/en/ja/zh/fr/hi)
+
+### [38] App Store 마케팅 스크린샷 — 팀 에이전트 병렬 크리에이티브
+**팀 합의 — Architect 채택**:
+- UX/UI Designer: 3장 각 그라디언트/카피/tilt 각도 스펙
+- Art Director: 2× 수퍼샘플 → LANCZOS, 다중 방사형 blob, 듀얼 드롭섀도, 글래스 하이라이트
+- Copywriter: Set C/A/B 베스트 카피 ("길게 읽지 마세요 / 지도처럼 탐색하세요" 외)
+- Reviewer: Over-the-Phone Headline + Dark-Gradient Premium + Zoomed Detail 3대 트렌드 적용
+
+**산출**:
+- `marketing/make_ads.py` — iPhone 6.7" (1290×2796) 생성 스크립트
+- `marketing/make_ads_ipad.py` — iPad Pro 12.9" (2048×2732) 생성 스크립트
+- `marketing/source/` — 사용자 실제 iPhone/iPad 스크린샷 3쌍 저장
+- `marketing/screenshots/` — iPhone 광고 3장
+- `marketing/screenshots_ipad/` — iPad 광고 3장
+
+**프리미엄 이펙트 8종**: Dark-Gradient Premium / Multi-radial blob / Over-the-phone headline / 듀얼 드롭섀도 / 글래스 하이라이트 / 텍스트 미세 섀도 / 스파클 4-ray 별 / CTA 필 배지
+

@@ -18,3 +18,5 @@ native/**/*.xcuserstate
 native/**/project.xcworkspace/
 native/**/DerivedData/
 native/**/build/
+# Marketing — source images(개인 iPhone/iPad 스크린샷) 제외, 스크립트·최종 출력은 커밋.
+marketing/source/
