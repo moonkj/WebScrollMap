@@ -17,7 +17,6 @@ import { createPinStore } from '@core/pins';
 import { createTrailStore } from '@core/trail';
 import { loadSettings } from '@core/settings';
 import { getBrowserApi } from '@platform/browserApi';
-import { playHaptic } from '@platform/iapBridge';
 import { DEFAULT_SETTINGS, isWsmMessage, type PageStatus, type PinSummary, type Settings, type WsmMessage, type WsmResponse } from '@core/messages';
 import { applySmartFilter } from '@core/smartFilter';
 import { shouldActivate } from './shouldActivate';
@@ -102,7 +101,6 @@ async function bootstrap(): Promise<void> {
     const visible = settings.enabled && isActivatable;
     s.setProperty('display', visible ? 'block' : 'none', 'important');
     s.setProperty('width', `${SLIM_WIDTH_PX}px`, 'important');
-    // 바 두께 CSS 변수 — Shadow 내부 .wsm-track의 clip-path가 이걸로 시각 두께 결정
     s.setProperty('--wsm-visible', `${settings.barWidthPx}px`);
     if (settings.side === 'right') {
       s.setProperty('right', `${settings.marginPx}px`, 'important');
@@ -114,7 +112,24 @@ async function bootstrap(): Promise<void> {
     host.host.classList.toggle('wsm-side-left', settings.side === 'left');
     host.host.classList.toggle('wsm-side-right', settings.side === 'right');
   }
+  // iOS Safari: 바가 layout viewport 전체(top:0 bottom:0)를 채우면 visual viewport보다
+  // 커서 인디케이터가 보이지 않는 영역에 렌더링됨. visualViewport.height로 높이 고정.
+  function applyVisualHeight() {
+    const vv = (window as unknown as { visualViewport?: VisualViewport }).visualViewport;
+    const h = vv && vv.height > 0 ? vv.height : window.innerHeight;
+    const offsetTop = vv ? vv.offsetTop : 0;
+    host.host.style.setProperty('top', `${offsetTop}px`, 'important');
+    host.host.style.setProperty('height', `${h}px`, 'important');
+    host.host.style.setProperty('bottom', 'auto', 'important');
+  }
   applyPositionStyle();
+  applyVisualHeight();
+  const vv = (window as unknown as { visualViewport?: VisualViewport }).visualViewport;
+  if (vv) {
+    vv.addEventListener('resize', applyVisualHeight);
+    vv.addEventListener('scroll', applyVisualHeight);
+  }
+  window.addEventListener('resize', applyVisualHeight, { passive: true });
 
   const colorScheme = detectTheme(document, window);
   const renderer = createRenderer(host.root, {
@@ -174,6 +189,7 @@ async function bootstrap(): Promise<void> {
   const floatingPins = createFloatingPins(host.root, {
     side: settings.side,
     scheme: colorScheme,
+    palette: paletteForTheme(colorScheme, settings.theme),
     onJump: (pin) => container.setScrollY(Math.max(0, pin.y - container.getHeight() / 2)),
     onDelete: (pinId) => {
       pinStore.remove(pinId);
@@ -265,6 +281,25 @@ async function bootstrap(): Promise<void> {
     scrollTarget.addEventListener('scroll', onScroll, { passive: true } as AddEventListenerOptions);
   }
 
+  /** 핀 고정 시 바 위에 파도 리플 생성 — doc Y를 바 좌표로 변환해 원형 확산. */
+  function spawnRipple(docY: number) {
+    const docH = container.getDocHeight() || 1;
+    const pct = Math.max(0, Math.min(1, docY / docH));
+    const palette = paletteForTheme(colorScheme, settings.theme);
+    const ripple = document.createElement('div');
+    ripple.className = 'wsm-ripple';
+    const size = 24;
+    ripple.style.cssText = [
+      `top: ${(pct * 100).toFixed(3)}%`,
+      settings.side === 'right' ? 'right: 0' : 'left: 0',
+      `width: ${size}px`,
+      `height: ${size}px`,
+      `color: ${palette.pin}`,
+    ].join(';');
+    host.root.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 760);
+  }
+
   function reevaluateActivation() {
     const next = shouldActivate(document, window);
     if (next !== isActivatable) {
@@ -288,9 +323,6 @@ async function bootstrap(): Promise<void> {
     snapCandidates: () => lastResult.anchors.map((a) => a.y),
     getDocHeight: () => container.getDocHeight(),
     getViewportHeight: () => container.getHeight(),
-    onHaptic: (kind) => {
-      playHaptic(kind);
-    },
     onLongPress: (barDocY) => {
       // 꾹 누른 바 위치(doc Y)에 핀 — 화면 이동 없음. 손가락 위치 = 핀 위치.
       const label = findNearestHeadingLabel(barDocY, lastResult.anchors);
@@ -298,7 +330,7 @@ async function bootstrap(): Promise<void> {
       if (added) {
         renderer.setPins(pinStore.list());
         floatingPins.update(pinStore.list(), container.getDocHeight());
-        playHaptic('pin');
+        spawnRipple(barDocY);
       }
       // long-press fire 이후 scrubCommandY를 실제 scroll로 되돌려 indicator가 stuck 방지.
       // (터치 초기 onScrubMove로 finger 위치에 이동했지만 스크롤은 gated였음.)
@@ -309,6 +341,11 @@ async function bootstrap(): Promise<void> {
       isScrubbing = state === 'scrubbing';
       if (isScrubbing) {
         scrubCommandY = null;
+        // 새 scrub 시작 시 host 크기(visual viewport) 강제 동기화 + rect 재측정.
+        // URL bar 애니메이션 중 visualViewport.resize가 누락되거나 타이밍 어긋나는
+        // 경우를 방어.
+        applyVisualHeight();
+        scrubber.refreshRect?.();
         host.host.classList.add('wsm-expanded');
         sectionBadge.show();
         if (badgeHideTimer !== null) {
@@ -420,21 +457,22 @@ async function bootstrap(): Promise<void> {
         return false;
       }
       case 'settings-changed': {
-        // H2: 스크럽 중이면 host 위치 변경이 cachedRect를 stale로 만들므로 defer.
-        // 스크럽 종료 후 다음 settings-changed 또는 mutation에서 반영됨.
+        // 팔레트/투명도는 cachedRect에 영향 없음 → 스크럽 중에도 즉시 적용.
+        // 위치·스캔 관련은 H2에 따라 스크럽 중 defer.
+        settings = { ...settings, ...msg.settings };
+        const nextPalette = paletteForTheme(colorScheme, settings.theme);
+        floatingPins.setPalette(nextPalette);
+        floatingPins.setOpacity(settings.floatingOpacity);
+        renderer.setPalette(nextPalette);
         if (isScrubbing) {
           sendResponse({ ok: true } satisfies WsmResponse);
           return false;
         }
-        settings = { ...settings, ...msg.settings };
         applyPositionStyle();
-        // side 변경 시 모든 side-aware UI 업데이트 (매그니파이/섹션 배지/플로팅 패널 방향)
         renderer.setSide(settings.side);
         magnifier.setSide(settings.side);
         sectionBadge.setSide(settings.side);
         floatingPins.setSide(settings.side);
-        floatingPins.setOpacity(settings.floatingOpacity);
-        renderer.setPalette(paletteForTheme(colorScheme, settings.theme));
         lastResult = scanWithFilter();
         renderer.update(lastResult);
         renderer.highlight('slim', vp());

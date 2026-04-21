@@ -13,7 +13,6 @@ type ApiMocks = {
   snapCandidates: ReturnType<typeof vi.fn>;
   getDocHeight: ReturnType<typeof vi.fn>;
   getViewportHeight: ReturnType<typeof vi.fn>;
-  onHaptic: ReturnType<typeof vi.fn>;
   onStateChange: ReturnType<typeof vi.fn>;
   onLongPress: ReturnType<typeof vi.fn>;
   onMagnify: ReturnType<typeof vi.fn>;
@@ -26,7 +25,6 @@ function makeApi(overrides: Partial<ScrubberApi> = {}): ScrubberApi & ApiMocks {
     snapCandidates: vi.fn(() => [] as number[]),
     getDocHeight: vi.fn(() => 10000),
     getViewportHeight: vi.fn(() => 1000),
-    onHaptic: vi.fn(),
     onStateChange: vi.fn(),
     onLongPress: vi.fn(),
     onMagnify: vi.fn(),
@@ -146,7 +144,6 @@ describe('createScrubber — long-press', () => {
     vi.advanceTimersByTime(LONG_PRESS_MS + 1);
     // docY pct = 0.5 → 5000
     expect(api.onLongPress).toHaveBeenCalledWith(5000);
-    expect(api.onHaptic).toHaveBeenCalledWith('pin');
   });
 
   it('cancels long-press when movement exceeds tolerance', () => {
@@ -171,8 +168,8 @@ describe('createScrubber — long-press', () => {
     // scroll happens immediately when not gated.
     expect(api.scrollTo).toHaveBeenCalled();
     vi.advanceTimersByTime(LONG_PRESS_MS + 50);
-    // no haptic pin
-    expect(api.onHaptic).not.toHaveBeenCalledWith('pin');
+    // onLongPress not supplied → scrollTo was called (not gated)
+    expect(api.scrollTo.mock.calls.length).toBeGreaterThan(0);
   });
 });
 

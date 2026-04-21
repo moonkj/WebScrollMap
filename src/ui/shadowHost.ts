@@ -96,6 +96,22 @@ export function mountShadowHost(
       40% { transform: translateY(-50%) scale(1.3); opacity: 1; }
       100% { transform: translateY(-50%) scale(1); opacity: 1; }
     }
+    /* 핀 고정 시 파도 리플 효과 — 터치 지점에서 외곽으로 원형 확산 */
+    .wsm-ripple {
+      position: absolute;
+      pointer-events: none;
+      border-radius: 50%;
+      border: 2px solid currentColor;
+      opacity: 0.9;
+      transform: translate(-50%, -50%) scale(0.1);
+      animation: wsm-ripple-wave 720ms cubic-bezier(0.2, 0.8, 0.4, 1) forwards;
+      will-change: transform, opacity;
+    }
+    @keyframes wsm-ripple-wave {
+      0%   { transform: translate(-50%, -50%) scale(0.1); opacity: 0.9; border-width: 2px; }
+      60%  { opacity: 0.5; border-width: 1.5px; }
+      100% { transform: translate(-50%, -50%) scale(8); opacity: 0; border-width: 0.5px; }
+    }
     .wsm-section-badge {
       position: absolute;
       top: 12px;

@@ -6,6 +6,11 @@ import { TUNING } from '@config/tuning';
 import { snapToAnchor } from '@core/snap';
 import type { Disposable } from '@core/types';
 
+export interface ScrubberController extends Disposable {
+  /** 외부에서 강제 rect 재측정 (레이아웃 변경 후 stale 방지) */
+  refreshRect(): void;
+}
+
 export const SNAP_THRESHOLD = TUNING.snapThresholdPx;
 export const EDGE_MARGIN = TUNING.edgeMarginPx;
 export const LONG_PRESS_MS = 500;
@@ -18,7 +23,6 @@ export interface ScrubberApi {
   snapCandidates(): number[];
   getDocHeight(): number;
   getViewportHeight(): number;
-  onHaptic?(kind: 'snap' | 'edge' | 'pin'): void;
   onStateChange?(state: 'idle' | 'scrubbing'): void;
   onLongPress?(y: number): void;
   onMagnify?(clientY: number, docY: number): void;
@@ -47,7 +51,7 @@ function isTrackEvent(e: Event, hostEl: HTMLElement): boolean {
   return false;
 }
 
-export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
+export function createScrubber(el: HTMLElement, api: ScrubberApi): ScrubberController {
   let active = false;
   let ticking = false;
   let pendingY: number | null = null;
@@ -74,6 +78,8 @@ export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
   }
 
   function refreshRect() {
+    // 호스트 자체가 visualViewport에 맞춰 top/height 설정되므로 getBoundingClientRect가
+    // 이미 visual viewport 기준. 추가 보정 불필요.
     const r = el.getBoundingClientRect();
     cachedRect = { top: r.top, height: r.height };
   }
@@ -138,7 +144,6 @@ export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
       longPressTimer = setTimeout(() => {
         longPressTimer = null;
         longPressFired = true;
-        api.onHaptic?.('pin');
         api.onLongPress?.(targetDocY);
       }, LONG_PRESS_MS);
     } else {
@@ -193,8 +198,7 @@ export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
     // Final snap haptic (scroll은 이미 사용자가 원하는 위치에 있음)
     if (e && !longPressFired && !scrollGated) {
       const docY = mapEventToY(e.clientY);
-      const snapped = snapToAnchor(docY, api.snapCandidates());
-      if (snapped.snapped) api.onHaptic?.('snap');
+      snapToAnchor(docY, api.snapCandidates());
     }
     // Double-tap
     if (e && !moved && !longPressFired) {
@@ -275,6 +279,10 @@ export function createScrubber(el: HTMLElement, api: ScrubberApi): Disposable {
   window.addEventListener('resize', onWinResize, { passive: true });
 
   return {
+    refreshRect() {
+      // 외부에서 명시적으로 호출 — active 여부 무관하게 재측정.
+      refreshRect();
+    },
     dispose() {
       el.removeEventListener('pointerdown', onPointerDown);
       document.removeEventListener('pointermove', onPointerMove);

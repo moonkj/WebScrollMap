@@ -5,34 +5,51 @@
 // - 최소화 상태: 작은 원형 핀 아이콘 + 카운트.
 
 import type { Disposable, Pin } from '@core/types';
+import type { Palette } from './palette';
 
 export interface FloatingPinsApi extends Disposable {
   update(pins: ReadonlyArray<Pin>, docHeight: number): void;
   setSide(side: 'left' | 'right'): void;
   /** 40 | 70 | 100 — 투명도 백분율. Shadow host 내 wrapper opacity에 적용. */
   setOpacity(pct: number): void;
+  /** 테마 팔레트 변경 — 배경 tint, 보더, 버블 색 갱신 */
+  setPalette(palette: Palette): void;
 }
 
 export interface FloatingPinsOpts {
   side: 'left' | 'right';
   scheme: 'light' | 'dark';
+  palette: Palette;
   onJump(pin: Pin): void;
   onDelete(pinId: string): void;
 }
 
-function styleFor(scheme: 'light' | 'dark'): string {
+function parseRgb(color: string): [number, number, number] {
+  const m = color.match(/rgba?\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+  if (!m) return [249, 115, 22]; // orange-500 fallback
+  return [parseInt(m[1] ?? '0', 10), parseInt(m[2] ?? '0', 10), parseInt(m[3] ?? '0', 10)];
+}
+
+// 배경·보더 모두 accent를 섞어 theme을 따라가도록.
+// light: 흰색 85% + accent 15% → 크림/파스텔. dark: 검정 85% + accent 15% → 딥 톤.
+function panelColors(scheme: 'light' | 'dark', palette: Palette): {
+  bg: string; fg: string; border: string; headerBorder: string;
+} {
+  const [r, g, b] = parseRgb(palette.pin);
   if (scheme === 'dark') {
-    return [
-      'background: rgba(15,23,42,0.94)',
-      'color: #f8fafc',
-      'border: 1px solid #1f2a3d',
-    ].join(';');
+    return {
+      bg: `rgba(${Math.round(r * 0.15)}, ${Math.round(g * 0.15)}, ${Math.round(b * 0.15)}, 0.95)`,
+      fg: '#f8fafc',
+      border: `rgba(${r}, ${g}, ${b}, 0.45)`,
+      headerBorder: `rgba(${r}, ${g}, ${b}, 0.28)`,
+    };
   }
-  return [
-    'background: rgba(255,255,255,0.96)',
-    'color: #0f172a',
-    'border: 1px solid #e2e8f0',
-  ].join(';');
+  return {
+    bg: `rgba(${Math.round(255 * 0.85 + r * 0.15)}, ${Math.round(255 * 0.85 + g * 0.15)}, ${Math.round(255 * 0.85 + b * 0.15)}, 0.97)`,
+    fg: '#0f172a',
+    border: `rgba(${r}, ${g}, ${b}, 0.5)`,
+    headerBorder: `rgba(${r}, ${g}, ${b}, 0.28)`,
+  };
 }
 
 export function createFloatingPins(root: ShadowRoot, opts: FloatingPinsOpts): FloatingPinsApi {
@@ -40,6 +57,23 @@ export function createFloatingPins(root: ShadowRoot, opts: FloatingPinsOpts): Fl
   let side = opts.side;
   let minimized = false;
   let lastCount = 0;
+  let palette = opts.palette;
+  let panelColorState = panelColors(opts.scheme, palette);
+
+  // iPad/대화면 반응형 — 기본 크기 대비 확대.
+  const isTablet = window.innerWidth >= 768;
+  const SIZE = {
+    fontPx: isTablet ? 15 : 12,
+    panelW: isTablet ? 280 : 180,
+    panelMaxH: isTablet ? 400 : 260,
+    bubbleD: isTablet ? 56 : 44,
+    liPadY: isTablet ? 4 : 2,
+    delPadX: isTablet ? 14 : 12,
+    delPadY: isTablet ? 12 : 10,
+    delMin: isTablet ? 48 : 40,
+    delFontPx: isTablet ? 22 : 18,
+    radius: isTablet ? 14 : 12,
+  };
 
   const wrapper = doc.createElement('div');
   wrapper.className = 'wsm-floating-pins';
@@ -47,7 +81,7 @@ export function createFloatingPins(root: ShadowRoot, opts: FloatingPinsOpts): Fl
     'position: fixed',
     'bottom: calc(env(safe-area-inset-bottom, 0px) + 80px)', // iOS Safari 하단 툴바 회피
     'z-index: 3',
-    'font: 12px -apple-system, system-ui, sans-serif',
+    `font: ${SIZE.fontPx}px -apple-system, system-ui, sans-serif`,
     'pointer-events: auto',
     'display: none',
     'user-select: none',
@@ -59,11 +93,13 @@ export function createFloatingPins(root: ShadowRoot, opts: FloatingPinsOpts): Fl
   const panel = doc.createElement('div');
   panel.className = 'wsm-fp-panel';
   panel.style.cssText = [
-    styleFor(opts.scheme),
-    'border-radius: 12px',
+    `background: ${panelColorState.bg}`,
+    `color: ${panelColorState.fg}`,
+    `border: 1px solid ${panelColorState.border}`,
+    `border-radius: ${SIZE.radius}px`,
     'box-shadow: 0 6px 20px rgba(0,0,0,0.25)',
-    'width: 180px',
-    'max-height: 260px',
+    `width: ${SIZE.panelW}px`,
+    `max-height: ${SIZE.panelMaxH}px`,
     'overflow: hidden',
     'display: flex',
     'flex-direction: column',
@@ -75,9 +111,8 @@ export function createFloatingPins(root: ShadowRoot, opts: FloatingPinsOpts): Fl
     'display: flex',
     'align-items: center',
     'justify-content: space-between',
-    'padding: 8px 10px',
-    'border-bottom: 1px solid currentColor',
-    'opacity: 0.95',
+    `padding: ${isTablet ? 10 : 8}px ${isTablet ? 12 : 10}px`,
+    `border-bottom: 1px solid ${panelColorState.headerBorder}`,
     'gap: 6px',
     'cursor: move',
     'touch-action: none',
@@ -86,7 +121,7 @@ export function createFloatingPins(root: ShadowRoot, opts: FloatingPinsOpts): Fl
   ].join(';');
   const title = doc.createElement('span');
   title.textContent = '⋮⋮ 핀';
-  title.style.cssText = 'font-weight: 600; font-size: 12px; letter-spacing: 0.02em; pointer-events: none;';
+  title.style.cssText = `font-weight: 600; font-size: ${SIZE.fontPx}px; letter-spacing: 0.02em; pointer-events: none;`;
   const minBtn = doc.createElement('button');
   minBtn.type = 'button';
   minBtn.setAttribute('aria-label', 'Minimize');
@@ -121,17 +156,18 @@ export function createFloatingPins(root: ShadowRoot, opts: FloatingPinsOpts): Fl
   bubble.type = 'button';
   bubble.className = 'wsm-fp-bubble';
   bubble.setAttribute('aria-label', 'Expand pins');
+  const [pr, pg, pb] = parseRgb(palette.pin);
   bubble.style.cssText = [
     'appearance: none',
     'border: 0',
-    'width: 44px',
-    'height: 44px',
+    `width: ${SIZE.bubbleD}px`,
+    `height: ${SIZE.bubbleD}px`,
     'border-radius: 50%',
-    'background: rgba(249,115,22,1)',
+    `background: rgba(${pr}, ${pg}, ${pb}, 1)`,
     'color: #fff',
-    'font: 700 13px -apple-system, system-ui, sans-serif',
+    `font: 700 ${SIZE.fontPx + 1}px -apple-system, system-ui, sans-serif`,
     'cursor: move',
-    'box-shadow: 0 4px 12px rgba(249,115,22,0.4)',
+    `box-shadow: 0 4px 12px rgba(${pr}, ${pg}, ${pb}, 0.4)`,
     'display: none',
     'align-items: center',
     'justify-content: center',
@@ -258,17 +294,18 @@ export function createFloatingPins(root: ShadowRoot, opts: FloatingPinsOpts): Fl
         'display: flex',
         'align-items: center',
         'gap: 8px',
-        'padding: 2px 2px 2px 8px', // 우측 패딩 축소 — × 버튼이 자체 패딩 보유
+        `padding: ${SIZE.liPadY}px 2px ${SIZE.liPadY}px 8px`,
         'border-radius: 6px',
         'cursor: pointer',
         'touch-action: manipulation',
       ].join(';');
 
+      const pinColor = p.color ?? palette.pin;
       const dot = doc.createElement('span');
-      dot.style.cssText = `flex:0 0 auto;width:10px;height:10px;border-radius:50%;background:${p.color ?? 'rgba(249,115,22,1)'};box-shadow:0 0 6px ${p.color ?? 'rgba(249,115,22,0.6)'};`;
+      dot.style.cssText = `flex:0 0 auto;width:${isTablet ? 12 : 10}px;height:${isTablet ? 12 : 10}px;border-radius:50%;background:${pinColor};box-shadow:0 0 6px ${pinColor};`;
 
       const info = doc.createElement('span');
-      info.style.cssText = 'flex:1;font-variant-numeric:tabular-nums;font-size:12px;min-width:0;';
+      info.style.cssText = `flex:1;font-variant-numeric:tabular-nums;font-size:${SIZE.fontPx}px;min-width:0;`;
       const pct = Math.round((p.y / cap) * 100);
       // label(핀 찍힐 당시 heading snippet)이 있으면 우선 표시, 없으면 pct fallback.
       const suffix = p.label && p.label.length > 0 ? p.label : `${pct}%`;
@@ -289,12 +326,12 @@ export function createFloatingPins(root: ShadowRoot, opts: FloatingPinsOpts): Fl
         'color: inherit',
         'opacity: 0.85',
         'cursor: pointer',
-        'padding: 10px 12px',
+        `padding: ${SIZE.delPadY}px ${SIZE.delPadX}px`,
         'border-radius: 6px',
-        'font: 18px -apple-system, system-ui, sans-serif',
+        `font: ${SIZE.delFontPx}px -apple-system, system-ui, sans-serif`,
         'line-height: 1',
-        'min-width: 40px',
-        'min-height: 40px',
+        `min-width: ${SIZE.delMin}px`,
+        `min-height: ${SIZE.delMin}px`,
         'display: flex',
         'align-items: center',
         'justify-content: center',
@@ -438,6 +475,17 @@ export function createFloatingPins(root: ShadowRoot, opts: FloatingPinsOpts): Fl
     setOpacity(pct) {
       const clamped = Math.max(20, Math.min(100, pct)) / 100;
       wrapper.style.setProperty('opacity', String(clamped));
+    },
+    setPalette(next) {
+      palette = next;
+      panelColorState = panelColors(opts.scheme, palette);
+      panel.style.setProperty('background', panelColorState.bg);
+      panel.style.setProperty('color', panelColorState.fg);
+      panel.style.setProperty('border-color', panelColorState.border);
+      header.style.setProperty('border-bottom-color', panelColorState.headerBorder);
+      const [nr, ng, nb] = parseRgb(palette.pin);
+      bubble.style.setProperty('background', `rgba(${nr}, ${ng}, ${nb}, 1)`);
+      bubble.style.setProperty('box-shadow', `0 4px 12px rgba(${nr}, ${ng}, ${nb}, 0.4)`);
     },
     dispose() {
       header.removeEventListener('pointerdown', onHeaderPointerDown);

@@ -39,7 +39,13 @@ export function windowTarget(win: Window = window, doc: Document = document): Co
       const el = scrollEl() as HTMLElement;
       el.scrollTop = y;
     },
-    getHeight: () => win.innerHeight,
+    // iOS Safari: clientY는 visual viewport 기준 → vpH도 visualViewport.height 우선.
+    // innerHeight는 layout viewport일 수 있어 mapEventToY의 vpH/2 오프셋이 과도해짐 →
+    // finger가 indicator 하단에 위치하는 증상. visualViewport로 일관성 확보.
+    getHeight: () => {
+      const vv = (win as unknown as { visualViewport?: VisualViewport }).visualViewport;
+      return vv && vv.height > 0 ? vv.height : win.innerHeight;
+    },
     getDocHeight: () => scrollEl().scrollHeight,
   };
 }

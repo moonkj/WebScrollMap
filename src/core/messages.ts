@@ -59,7 +59,6 @@ export type WsmMessage =
   | { type: 'jump-to-pin'; pinId: string }
   | { type: 'delete-pin'; pinId: string }
   | { type: 'get-entitlement' } // legacy, returns pro
-  | { type: 'haptic'; kind: 'snap' | 'pin' | 'edge' }
   | { type: 'telemetry-flush' }
   | { type: 'ping' };
 
@@ -77,7 +76,7 @@ export type WsmResponse =
 const VALID_TYPES = new Set<string>([
   'get-settings', 'set-settings', 'get-status', 'settings-changed',
   'clear-pins', 'clear-trail', 'get-pins', 'jump-to-pin', 'delete-pin',
-  'get-entitlement', 'haptic', 'telemetry-flush', 'ping',
+  'get-entitlement', 'telemetry-flush', 'ping',
 ]);
 
 export function isWsmMessage(x: unknown): x is WsmMessage {
@@ -91,8 +90,6 @@ export function isWsmMessage(x: unknown): x is WsmMessage {
     case 'jump-to-pin':
     case 'delete-pin':
       return typeof msg.pinId === 'string' && msg.pinId.length > 0 && msg.pinId.length < 128;
-    case 'haptic':
-      return msg.kind === 'snap' || msg.kind === 'pin' || msg.kind === 'edge';
     case 'settings-changed':
       return msg.settings !== undefined && typeof msg.settings === 'object' && msg.settings !== null;
     default:

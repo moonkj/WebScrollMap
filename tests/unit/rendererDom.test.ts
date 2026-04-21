@@ -113,10 +113,9 @@ describe('createDomRenderer', () => {
     r.destroy();
   });
 
-  it('setPins() renders pin elements and onPinTap fires on click', () => {
+  it('setPins() renders pin elements as visual-only (pointer-events:none)', () => {
     const root = mkRoot();
-    const onPinTap = vi.fn();
-    const r = createDomRenderer(root, baseOpts({ onPinTap }));
+    const r = createDomRenderer(root, baseOpts());
     r.mount();
     r.update(result([], 1000));
     const pins: Pin[] = [
@@ -127,20 +126,9 @@ describe('createDomRenderer', () => {
     const track = root.querySelector('.wsm-track') as HTMLElement;
     const pinsLayer = track.children[3] as HTMLElement;
     expect(pinsLayer.children.length).toBe(2);
-    (pinsLayer.children[0] as HTMLElement).click();
-    expect(onPinTap).toHaveBeenCalledWith(pins[0]);
-    r.destroy();
-  });
-
-  it('setPins() aria-label is anonymous "Pin"', () => {
-    const root = mkRoot();
-    const r = createDomRenderer(root, baseOpts());
-    r.mount();
-    r.update(result([], 1000));
-    r.setPins([{ id: 'x', y: 100, label: 'Secret' }]);
-    const track = root.querySelector('.wsm-track') as HTMLElement;
-    const pinEl = (track.children[3] as HTMLElement).firstElementChild!;
-    expect(pinEl.getAttribute('aria-label')).toBe('Pin');
+    // 바 터치 간섭 차단을 위해 wrapper는 pointer-events:none.
+    const first = pinsLayer.children[0] as HTMLElement;
+    expect(first.style.pointerEvents).toBe('none');
     r.destroy();
   });
 

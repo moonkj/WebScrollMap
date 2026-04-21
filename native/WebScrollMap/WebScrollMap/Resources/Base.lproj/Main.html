@@ -127,24 +127,10 @@
           </div>
         </div>
 
-        <div class="feature-item">
-          <div class="feature-icon-wrap slate">
-            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 4v16"/>
-              <path d="M8 7v10"/>
-              <path d="M16 7v10"/>
-              <path d="M4 10v4"/>
-              <path d="M20 10v4"/>
-            </svg>
-          </div>
-          <div class="feature-text">
-            <div class="feature-title" data-i18n="feat_haptic_title"></div>
-            <div class="feature-desc" data-i18n="feat_haptic_desc"></div>
-          </div>
-        </div>
-
       </div>
     </div>
+
+    <div class="notice-box" data-i18n-html="notice_short_page"></div>
 
     <div class="legal-list-section">
       <div class="legal-list-header" data-i18n="legal_title"></div>
@@ -202,8 +188,7 @@
         feat_zoom_desc: '스크럽 중 현재 위치의 H1/H2 제목 표시',
         feat_theme_title: '테마 5종',
         feat_theme_desc: 'Default · Sunset · Ocean · Forest · Mono',
-        feat_haptic_title: '햅틱 (iOS)',
-        feat_haptic_desc: '핀 드롭·앵커 스냅·엣지 양보 시 미세 진동',
+        notice_short_page: '<strong>안내</strong> · 짧은 페이지에서는 미니맵 바가 자동으로 숨겨집니다. 화면보다 긴 페이지에서만 표시됩니다.',
         legal_title: '법적 정보 · 지원',
         privacy: '개인정보처리방침',
         terms: '이용약관',
@@ -230,8 +215,7 @@
         feat_zoom_desc: 'Floating H1/H2 heading preview while scrubbing',
         feat_theme_title: '5 Themes',
         feat_theme_desc: 'Default · Sunset · Ocean · Forest · Mono',
-        feat_haptic_title: 'Haptics (iOS)',
-        feat_haptic_desc: 'Subtle feedback on pin drop · anchor snap · edge yield',
+        notice_short_page: '<strong>Note</strong> · The minimap bar is automatically hidden on short pages. It only appears on pages longer than the screen.',
         legal_title: 'Legal · Support',
         privacy: 'Privacy Policy',
         terms: 'Terms of Service',
@@ -258,8 +242,7 @@
         feat_zoom_desc: 'スクラブ中にH1/H2見出しをフロート表示',
         feat_theme_title: 'テーマ 5種',
         feat_theme_desc: 'Default · Sunset · Ocean · Forest · Mono',
-        feat_haptic_title: 'ハプティクス (iOS)',
-        feat_haptic_desc: 'ピン留め · スナップ · エッジで微細フィードバック',
+        notice_short_page: '<strong>お知らせ</strong> · 短いページではミニマップバーが自動的に非表示になります。画面より長いページでのみ表示されます。',
         legal_title: '法的情報・サポート',
         privacy: 'プライバシーポリシー',
         terms: '利用規約',
@@ -286,8 +269,7 @@
         feat_zoom_desc: '滚动时浮动显示 H1/H2 标题',
         feat_theme_title: '5 种主题',
         feat_theme_desc: 'Default · Sunset · Ocean · Forest · Mono',
-        feat_haptic_title: '触感反馈 (iOS)',
-        feat_haptic_desc: '图钉、吸附、边缘时微振动反馈',
+        notice_short_page: '<strong>提示</strong> · 迷你地图栏在短页面上会自动隐藏,仅在长于屏幕的页面上显示。',
         legal_title: '法律 · 支持',
         privacy: '隐私政策',
         terms: '使用条款',
@@ -314,8 +296,7 @@
         feat_zoom_desc: 'Aperçu flottant des titres H1/H2 pendant le défilement',
         feat_theme_title: '5 thèmes',
         feat_theme_desc: 'Default · Sunset · Ocean · Forest · Mono',
-        feat_haptic_title: 'Retour haptique (iOS)',
-        feat_haptic_desc: 'Vibration fine pour épingle, snap, bord',
+        notice_short_page: '<strong>Info</strong> · La barre minimap est masquée automatiquement sur les pages courtes. Elle apparaît uniquement sur les pages plus longues que l\'écran.',
         legal_title: 'Mentions légales · Support',
         privacy: 'Politique de confidentialité',
         terms: "Conditions d'utilisation",
@@ -342,8 +323,7 @@
         feat_zoom_desc: 'स्क्रब के दौरान H1/H2 शीर्षक फ़्लोट में दिखाएँ',
         feat_theme_title: '5 थीम',
         feat_theme_desc: 'Default · Sunset · Ocean · Forest · Mono',
-        feat_haptic_title: 'हैप्टिक्स (iOS)',
-        feat_haptic_desc: 'पिन ड्रॉप · एंकर स्नैप · एज पर सूक्ष्म वाइब्रेशन',
+        notice_short_page: '<strong>सूचना</strong> · छोटे पेजों पर मिनिमैप बार स्वचालित रूप से छिपा होता है। यह केवल स्क्रीन से लंबे पेजों पर दिखाई देता है।',
         legal_title: 'कानूनी · सहायता',
         privacy: 'गोपनीयता नीति',
         terms: 'सेवा की शर्तें',
@@ -431,6 +411,9 @@
 
     document.querySelectorAll('[data-i18n]').forEach(function (el) {
       el.textContent = s[el.getAttribute('data-i18n')] || '';
+    });
+    document.querySelectorAll('[data-i18n-html]').forEach(function (el) {
+      el.innerHTML = s[el.getAttribute('data-i18n-html')] || '';
     });
 
     var mainView = document.getElementById('main-view');

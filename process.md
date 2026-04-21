@@ -257,3 +257,60 @@ Architect 판단: 실기기 불필요한 영역 집중 처리.
 - `pbxproj`: `MARKETING_VERSION = 1.0` → **1.0.0**
 - `extension/dist/*` + `popup.html` + `manifest.json` → 네이티브 Extension Resources로 동기화
 - **검증**: Typecheck / 321 tests / build OK (content 49.87KB / background 3.66KB / popup 5.62KB)
+
+### [32] GitHub Pages 개인정보/지원 페이지 + Apple 스타일 랜딩
+- `docs/index.html` + `privacy.html` + `support.html` — Apple 제품 페이지 톤(SF Pro / #fbfbfd / blur nav)
+- 6개 언어 기준 "수집/전송 없음, 로컬 저장만" 개인정보 처리방침
+- Support: 설치/사용법/FAQ + `mailto:imurmkj@naver.com`
+- App Store Connect 입력용 URL: `https://moonkj.github.io/WebScrollMap/privacy.html` / `support.html`
+
+### [33] 스크럽 라벨 접두어 제거
+- Magnifier/SectionBadge에서 `H1 · `, `H2 · `, `B · `, `IMG · ` 등 type prefix 제거 → snippet만 표시
+- 관련 테스트 재작성 (`'Intro'`, `'Beta'`, `'Details'` 등 순수 snippet 기대)
+
+### [34] iPad 설치 + floatingPins 반응형 + 테마 컬러
+- xcrun devicectl로 무선 아이패드 설치 경로 확립 (Team ID `QN975MTM7H`)
+- `FloatingPins` iPad 대응: 패널 180→280px, 최대높이 260→400px, 폰트 12→15px, 버블 44→56px, 삭제 버튼 48×48
+- **테마 accent 15% 블렌딩 배경** — default 오렌지 크림, sunset 핑크, ocean 블루, forest 그린, mono 그레이 (light/dark 양쪽)
+- `setPalette` 런타임 업데이트 지원 — 테마 변경 시 패널·보더·버블 즉시 반영
+
+### [35] 핀-스크럽 정합 근본 수정 — 팀 에이전트 병렬 디버깅
+**증상**: 핀 찍은 후 다음 스크럽에서 손가락이 인디케이터 하단에, 바 맨 아래 터치하면 핀이 위쪽에 찍힘.
+
+**팀 분석 (4명 병렬 2라운드)**:
+- Debugger H5: 핀 엘리먼트 `pointer-events:auto + width:100% + height:12px` 오버레이 → 이벤트 flow 교란 가능성
+- Coder: 상태 전환 로직 정확 — scrubCommandY null→initialY 동기
+- Test Engineer: 수학적으로 모든 시나리오 통과 → iOS Safari 런타임 이슈
+- Architect: 핀 hit area와 track clip-path 불일치 지적
+- **결정적 발견**: **호스트가 `position:fixed; top:0; bottom:0`으로 layout viewport 전체(예 844px)를 채우지만, 사용자 visual viewport는 URL바 제외 더 작음(예 700px)**
+  - 바가 visual 아래로 연장되어 높은 pct 인디케이터가 보이지 않는 영역에 렌더
+  - clientY는 visual 기준 → pct = clientY/layoutH가 실제 visual pct보다 작음
+  - 인디케이터가 finger보다 위쪽, 핀도 위쪽에 배치
+
+**수정 5곳**:
+- `content/entry.ts applyVisualHeight()`: 호스트를 `visualViewport.height`로 고정, `offsetTop`으로 top 보정
+- `visualViewport.resize`/`scroll` 이벤트에 동기화 + 매 `onStateChange('scrubbing')`에서 강제 재적용
+- `container.getHeight()`: `visualViewport.height` 우선
+- `scrubber.refreshRect`를 외부 호출 가능하게 공개 (ScrubberController)
+- 핀 DOM wrapper `pointer-events: none` + width 8px로 이벤트 오버레이 제거
+
+### [36] 햅틱 기능 완전 제거 + 파도 리플 피드백
+**결정 배경**: iOS Safari Extension 프로세스가 CoreHaptics/UIKit FeedbackGenerator/AudioServicesPlayAlertSound 모두 실제 진동 트리거하지 못함 확인 (4중 시도 실패). 사용자 요구대로 햅틱 제거 + 시각 피드백 대체.
+
+**제거**:
+- `src/platform/iapBridge.ts` `playHaptic` 함수 삭제
+- `src/ui/scrubber.ts` `onHaptic` 콜백 제거
+- `src/background/entry.ts` `case 'haptic'` 핸들러 제거
+- `src/core/messages.ts` `'haptic'` 메시지 타입/검증 제거
+- `SafariWebExtensionHandler.swift` HapticsManager 전체 + UIKit/CoreHaptics/AudioToolbox import 삭제
+- `Main.html` 햅틱 feature 카드 + 6개 언어 i18n 삭제
+- 관련 단위 테스트 7건 정리
+
+**추가 — 파도 리플**:
+- 핀 고정 시 바 위 `spawnRipple(barDocY)` 호출
+- 24×24px 원형 border → `scale 0.1 → 8`로 8배 확산, opacity 0.9→0, border 2px→0.5px
+- 720ms cubic-bezier 애니메이션 후 자동 제거
+- 테마 accent 색(`palette.pin`) 사용 — 테마에 따라 주황/핑크/블루/그린/그레이 파도
+
+**검증**: Typecheck / 314 tests / 빌드 (content 49.19KB / background 3.33KB / popup 5.62KB)
+

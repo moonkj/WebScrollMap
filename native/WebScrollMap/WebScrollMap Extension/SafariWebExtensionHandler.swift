@@ -2,16 +2,13 @@
 //  SafariWebExtensionHandler.swift
 //  WebScrollMap Extension
 //
-//  StoreKit 2 기반 Pro 구매 검증 + CoreHaptics.
+//  레거시 Entitlement 호환만 처리 (tier 제거됨).
 //  Extension (JS) → browser.runtime.sendNativeMessage → 여기.
 //
 
 import SafariServices
 import StoreKit
 import os.log
-#if canImport(CoreHaptics)
-import CoreHaptics
-#endif
 
 // MARK: - Shared types (JS Entitlement과 1:1 매칭)
 
@@ -135,91 +132,6 @@ final class EntitlementManager {
     }
 }
 
-// MARK: - Haptics
-
-final class HapticsManager {
-    static let shared = HapticsManager()
-    #if canImport(CoreHaptics)
-    private var engine: CHHapticEngine?
-    private var lastUsedAt: Date = .distantPast
-    private var idleTimer: Timer?
-    // 8초 이상 haptic 미사용 시 engine 정지 — 배터리 절감. 다음 play()에서 재시작.
-    private let idleTimeoutSeconds: TimeInterval = 8
-
-    private let queue = DispatchQueue(label: "com.kjmoon.WebScrollMap.haptic")
-
-    private init() {
-        guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else { return }
-        do {
-            engine = try CHHapticEngine()
-            // stoppedHandler는 시스템 stop (오디오 세션 방해 등) 시 호출 — engine=nil로 완전 해제
-            // race 방지: queue 경유 직렬화.
-            engine?.stoppedHandler = { [weak self] _ in
-                self?.queue.async { self?.engine = nil }
-            }
-            // resetHandler는 서버 리셋 시 engine 재시작 시도. nil이면 no-op.
-            engine?.resetHandler = { [weak self] in
-                self?.queue.async {
-                    if let e = self?.engine { try? e.start() }
-                }
-            }
-        } catch {
-            engine = nil
-        }
-    }
-
-    func play(kind: String) {
-        // play 호출은 JS 쪽에서 고주파 가능성 — queue에서 엔진 접근 직렬화.
-        queue.async { [weak self] in
-            guard let self = self, let engine = self.engine else { return }
-            do { try engine.start() } catch { return }
-            self.lastUsedAt = Date()
-            self.scheduleIdleStopLocked()
-
-            let intensity: Float
-            let sharpness: Float
-            switch kind {
-            case "pin":   intensity = 0.8; sharpness = 0.6
-            case "snap":  intensity = 0.4; sharpness = 0.7
-            case "edge":  intensity = 0.25; sharpness = 0.4
-            default:      intensity = 0.4; sharpness = 0.5
-            }
-            let params: [CHHapticEventParameter] = [
-                CHHapticEventParameter(parameterID: .hapticIntensity, value: intensity),
-                CHHapticEventParameter(parameterID: .hapticSharpness, value: sharpness)
-            ]
-            let event = CHHapticEvent(eventType: .hapticTransient, parameters: params, relativeTime: 0)
-            do {
-                let pattern = try CHHapticPattern(events: [event], parameters: [])
-                let player = try engine.makePlayer(with: pattern)
-                try player.start(atTime: 0)
-            } catch {
-                // silent
-            }
-        }
-    }
-
-    /// `queue` 내부에서만 호출. Timer는 main run loop에 예약.
-    private func scheduleIdleStopLocked() {
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            self.idleTimer?.invalidate()
-            self.idleTimer = Timer.scheduledTimer(withTimeInterval: self.idleTimeoutSeconds, repeats: false) { [weak self] _ in
-                guard let self = self else { return }
-                self.queue.async {
-                    if Date().timeIntervalSince(self.lastUsedAt) >= self.idleTimeoutSeconds {
-                        self.engine?.stop(completionHandler: nil)
-                    }
-                }
-            }
-        }
-    }
-    #else
-    private init() {}
-    func play(kind: String) {}
-    #endif
-}
-
 // MARK: - Request Handler
 
 class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
@@ -272,10 +184,6 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
                 return ["ok": true, "entitlement": e]
             }
             return ["ok": false, "error": "unsupported platform"]
-        case "haptic":
-            let kind = (message?["kind"] as? String) ?? "snap"
-            HapticsManager.shared.play(kind: kind)
-            return ["ok": true]
         default:
             os_log(.default, "WSM: unknown message type %@", type)
             return ["ok": false, "error": "unknown type"]

@@ -52,17 +52,6 @@ api.runtime.onMessage.addListener((raw, _sender, sendResponse) => {
       sendResponse({ ok: true } satisfies WsmResponse);
       return false;
     }
-    case 'haptic': {
-      const nativeApi = api as unknown as {
-        runtime: { sendNativeMessage?: (appId: string, msg: unknown) => Promise<unknown> };
-      };
-      const NATIVE_APP_ID = 'com.kjmoon.WebScrollMap';
-      if (typeof nativeApi.runtime.sendNativeMessage === 'function') {
-        nativeApi.runtime.sendNativeMessage(NATIVE_APP_ID, msg).catch(() => {});
-      }
-      sendResponse({ ok: true } satisfies WsmResponse);
-      return false;
-    }
     case 'get-entitlement': {
       // 레거시 호환 — tier 제거됐으므로 pro 반환.
       sendResponse({ ok: true, entitlement: null, tier: 'pro' } satisfies WsmResponse);

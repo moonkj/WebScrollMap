@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createFloatingPins, type FloatingPinsOpts } from '@ui/floatingPins';
 import type { Pin } from '@core/types';
+import { paletteFor } from '@ui/palette';
 
 function makeShadowRoot(): ShadowRoot {
   const host = document.createElement('div');
@@ -12,6 +13,7 @@ function makeOpts(overrides: Partial<FloatingPinsOpts> = {}): FloatingPinsOpts {
   return {
     side: 'right',
     scheme: 'light',
+    palette: paletteFor('light'),
     onJump: vi.fn(),
     onDelete: vi.fn(),
     ...overrides,

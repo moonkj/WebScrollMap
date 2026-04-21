@@ -63,18 +63,6 @@ describe('isWsmMessage', () => {
     });
   });
 
-  describe('haptic kind', () => {
-    it('accepts snap, pin, edge', () => {
-      expect(isWsmMessage({ type: 'haptic', kind: 'snap' })).toBe(true);
-      expect(isWsmMessage({ type: 'haptic', kind: 'pin' })).toBe(true);
-      expect(isWsmMessage({ type: 'haptic', kind: 'edge' })).toBe(true);
-    });
-    it('rejects unknown kind', () => {
-      expect(isWsmMessage({ type: 'haptic', kind: 'boom' })).toBe(false);
-      expect(isWsmMessage({ type: 'haptic' })).toBe(false);
-    });
-  });
-
   describe('settings-changed payload', () => {
     it('accepts object settings', () => {
       expect(isWsmMessage({ type: 'settings-changed', settings: {} })).toBe(true);

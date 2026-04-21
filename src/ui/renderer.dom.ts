@@ -101,22 +101,16 @@ export function createDomRenderer(root: ShadowRoot, opts: RendererOptions): Mini
         const el = doc.createElement('div');
         const yPct = (p.y / (docHeight || 1)) * 100;
         const color = p.color ?? palette.pin;
-        // 히트 영역 확장: 보이는 6px 도트 + 주변 히트 영역(12px 높이, 바 전체 폭)
+        // 바 터치 오버레이 차단을 위해 wrapper는 pointer-events:none.
+        // 핀 탭은 Floating Pins 패널에서 처리 (바 위 핀은 시각 마커 전용).
         const edgeStyle = isRight
-          ? 'right:0;width:100%;'
-          : 'left:0;width:100%;';
-        el.style.cssText = `position:absolute;top:${yPct.toFixed(3)}%;transform:translateY(-50%);${edgeStyle}height:12px;pointer-events:auto;cursor:pointer;`;
-        // 내부 visible dot
+          ? 'right:0;width:8px;'
+          : 'left:0;width:8px;';
+        el.style.cssText = `position:absolute;top:${yPct.toFixed(3)}%;transform:translateY(-50%);${edgeStyle}height:8px;pointer-events:none;`;
         const dot = doc.createElement('div');
         const dotEdge = isRight ? 'right:0;' : 'left:0;';
         dot.style.cssText = `position:absolute;top:50%;transform:translateY(-50%);${dotEdge}width:6px;height:6px;background:${color};border-radius:3px;box-shadow:0 0 6px ${color},0 0 2px #fff;animation:wsm-pin-pulse 500ms ease-out;pointer-events:none;`;
         el.appendChild(dot);
-        // aria-label은 익명 (snippet이 page JS로 composedPath 유출되는 것 방지)
-        el.setAttribute('aria-label', 'Pin');
-        el.addEventListener('click', (e) => {
-          e.stopPropagation();
-          opts.onPinTap?.(p);
-        });
         pinsLayer.appendChild(el);
       }
     },
