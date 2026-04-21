@@ -12,15 +12,6 @@ export interface SectionBadgeApi {
   destroy(): void;
 }
 
-function labelPrefix(kind: AnchorKind): string {
-  switch (kind) {
-    case AnchorKind.Heading1: return 'H1';
-    case AnchorKind.Heading2: return 'H2';
-    case AnchorKind.Heading3: return 'H3';
-    default: return '';
-  }
-}
-
 function isHeading(kind: AnchorKind): boolean {
   return (
     kind === AnchorKind.Heading1 ||
@@ -72,7 +63,7 @@ export function createSectionBadge(
     },
     update(scrollY, anchors) {
       const cur = findCurrent(scrollY, anchors);
-      const text = cur ? `${labelPrefix(cur.type)} · ${cur.snippet}` : '';
+      const text = cur?.snippet ?? '';
       // 빈 text일 땐 항상 숨김 보장 (show() 후 no-match 시 상태 일치).
       // dedup은 text가 있을 때만 적용 — DOM 쓰기 비용 감소.
       if (!text) {

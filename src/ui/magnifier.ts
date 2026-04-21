@@ -2,7 +2,6 @@
 // R2+ UX 제약: blur 금지, transform/opacity만 사용. 프레임당 1ms 이하 유지.
 
 import type { AnchorPoint, ScannerResult } from '@core/types';
-import { AnchorKind } from '@core/types';
 import { paletteFor } from './palette';
 
 export interface MagnifierApi {
@@ -10,19 +9,6 @@ export interface MagnifierApi {
   hide(): void;
   setSide(side: 'left' | 'right'): void;
   destroy(): void;
-}
-
-function labelFor(kind: AnchorKind): string {
-  switch (kind) {
-    case AnchorKind.Heading1: return 'H1';
-    case AnchorKind.Heading2: return 'H2';
-    case AnchorKind.Heading3: return 'H3';
-    case AnchorKind.Image: return 'IMG';
-    case AnchorKind.Video: return 'VIDEO';
-    case AnchorKind.StrongText: return 'B';
-    case AnchorKind.LinkCluster: return 'LINK';
-    default: return '';
-  }
 }
 
 // docY에 가장 가까운 앵커 반환 (스냅 반경과 무관하게 top-k 후 1개)
@@ -107,8 +93,7 @@ export function createMagnifier(
         el.style.opacity = '0';
         return;
       }
-      const kindTxt = labelFor(a.type);
-      el.textContent = kindTxt ? `${kindTxt} · ${a.snippet}` : a.snippet;
+      el.textContent = a.snippet;
       el.style.opacity = '1';
     },
     hide() {

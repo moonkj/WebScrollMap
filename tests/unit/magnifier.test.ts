@@ -50,7 +50,7 @@ describe('createMagnifier', () => {
     const res = result([anchor(1000, AnchorKind.Heading1, 'Intro')]);
     api.show(150, 1000, res);
     const el = root.querySelector('[role="tooltip"]') as HTMLElement;
-    expect(el.textContent).toBe('H1 · Intro');
+    expect(el.textContent).toBe('Intro');
     expect(el.style.opacity).toBe('1');
     expect(el.style.top).toBe('150px');
     expect(el.style.right).toBe('56px');
@@ -67,7 +67,7 @@ describe('createMagnifier', () => {
     ]);
     api.show(50, 510, res);
     const el = root.querySelector('[role="tooltip"]') as HTMLElement;
-    expect(el.textContent).toBe('H2 · Beta');
+    expect(el.textContent).toBe('Beta');
     api.destroy();
   });
 
@@ -144,22 +144,22 @@ describe('createMagnifier', () => {
     expect(root.querySelector('[role="tooltip"]')).toBeNull();
   });
 
-  it('labels each supported anchor kind with snippet', () => {
+  it('displays only snippet (no kind prefix) for all anchor kinds', () => {
     const root = mkRoot();
     const api = createMagnifier(root, 'light', 'right');
-    const cases: Array<[AnchorKind, string]> = [
-      [AnchorKind.Heading2, 'H2'],
-      [AnchorKind.Heading3, 'H3'],
-      [AnchorKind.Image, 'IMG'],
-      [AnchorKind.Video, 'VIDEO'],
-      [AnchorKind.StrongText, 'B'],
-      [AnchorKind.LinkCluster, 'LINK'],
+    const kinds: AnchorKind[] = [
+      AnchorKind.Heading2,
+      AnchorKind.Heading3,
+      AnchorKind.Image,
+      AnchorKind.Video,
+      AnchorKind.StrongText,
+      AnchorKind.LinkCluster,
     ];
-    for (const [kind, prefix] of cases) {
+    for (const kind of kinds) {
       const res = result([anchor(100, kind, 'S')]);
       api.show(10, 100, res);
       const el = root.querySelector('[role="tooltip"]') as HTMLElement;
-      expect(el.textContent).toBe(`${prefix} · S`);
+      expect(el.textContent).toBe('S');
     }
     api.destroy();
   });

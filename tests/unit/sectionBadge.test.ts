@@ -62,7 +62,7 @@ describe('createSectionBadge', () => {
     ];
     api.update(600, anchors);
     const el = root.querySelector('.wsm-section-badge') as HTMLElement;
-    expect(el.textContent).toBe('H2 · Details');
+    expect(el.textContent).toBe('Details');
     api.destroy();
   });
 
@@ -72,7 +72,7 @@ describe('createSectionBadge', () => {
     const anchors: AnchorPoint[] = [anchor(50, AnchorKind.Heading3, 'Tiny')];
     api.update(100, anchors);
     const el = root.querySelector('.wsm-section-badge') as HTMLElement;
-    expect(el.textContent).toBe('H3 · Tiny');
+    expect(el.textContent).toBe('Tiny');
     api.destroy();
   });
 
@@ -142,7 +142,7 @@ describe('createSectionBadge', () => {
     const anchors: AnchorPoint[] = [anchor(120, AnchorKind.Heading1, 'Near')];
     api.update(100, anchors);
     const el = root.querySelector('.wsm-section-badge') as HTMLElement;
-    expect(el.textContent).toBe('H1 · Near');
+    expect(el.textContent).toBe('Near');
     api.destroy();
   });
 
