@@ -3,28 +3,248 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>WebScrollMap</title>
+<title>WebScrollMap — 긴 웹페이지를 지도처럼</title>
+<meta name="description" content="Safari 확장으로 긴 웹페이지를 한눈에 탐색하고, 핀으로 북마크하고, 빠르게 검색하세요." />
 <style>
-  body { font: 16px/1.6 -apple-system, BlinkMacSystemFont, system-ui, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 20px; color: #0f172a; }
-  h1 { font-size: 28px; margin-bottom: 4px; }
-  .tag { color: #64748b; font-size: 14px; }
-  nav a { display: inline-block; margin-right: 16px; color: #f97316; text-decoration: none; font-weight: 600; }
-  nav a:hover { text-decoration: underline; }
-  .card { background: #f8fafc; border-radius: 12px; padding: 20px; margin-top: 24px; }
-  code { background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #fbfbfd;
+    --text: #1d1d1f;
+    --muted: #6e6e73;
+    --accent: #f97316;
+    --card: #ffffff;
+    --border: #d2d2d7;
+  }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font: 400 17px/1.47 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
+    background: var(--bg); color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .nav {
+    position: sticky; top: 0; z-index: 10;
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    background: rgba(251,251,253,0.8);
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+    padding: 14px 0;
+  }
+  .nav-inner {
+    max-width: 980px; margin: 0 auto; padding: 0 22px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 14px;
+  }
+  .nav-logo { font-weight: 600; letter-spacing: -0.01em; }
+  .nav-links a { color: var(--text); margin-left: 24px; font-weight: 400; }
+  .nav-links a:hover { color: var(--accent); text-decoration: none; }
+
+  .hero {
+    text-align: center;
+    padding: 80px 22px 100px;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfbfd 100%);
+  }
+  .hero-icon {
+    width: 120px; height: 120px;
+    background: linear-gradient(135deg, #fb923c 0%, #f97316 100%);
+    border-radius: 26px;
+    margin: 0 auto 28px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 20px 40px -10px rgba(249,115,22,0.35);
+  }
+  .hero-icon::before {
+    content: '';
+    width: 18px; height: 72px;
+    background: #fff;
+    border-radius: 9px;
+    box-shadow: -28px 0 0 -6px rgba(255,255,255,0.4), 28px 0 0 -6px rgba(255,255,255,0.4);
+  }
+  .hero h1 {
+    font: 600 56px/1.05 -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+    letter-spacing: -0.025em;
+    margin-bottom: 12px;
+  }
+  .hero .tagline {
+    font-size: 24px; color: var(--muted); font-weight: 400;
+    margin-bottom: 36px;
+    letter-spacing: -0.01em;
+  }
+  .badge-store {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: #000; color: #fff;
+    padding: 12px 22px; border-radius: 10px;
+    font-size: 15px; font-weight: 500;
+  }
+  .badge-store:hover { text-decoration: none; opacity: 0.85; }
+  .badge-store .arrow { font-size: 18px; }
+
+  section { padding: 80px 22px; }
+  .container { max-width: 980px; margin: 0 auto; }
+  h2 {
+    font: 600 40px/1.1 -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+    letter-spacing: -0.02em;
+    text-align: center;
+    margin-bottom: 16px;
+  }
+  .section-tag {
+    text-align: center; color: var(--accent);
+    font-size: 14px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+  }
+  .section-sub {
+    text-align: center; color: var(--muted);
+    font-size: 19px;
+    max-width: 640px; margin: 0 auto 60px;
+  }
+
+  .features {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+  }
+  @media (max-width: 720px) {
+    .features { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 40px; }
+    .hero .tagline { font-size: 19px; }
+    h2 { font-size: 32px; }
+  }
+  .feature {
+    background: var(--card);
+    padding: 32px 24px;
+    border-radius: 18px;
+    border: 1px solid var(--border);
+  }
+  .feature .ico {
+    width: 44px; height: 44px; border-radius: 10px;
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    margin-bottom: 16px;
+  }
+  .feature h3 {
+    font-size: 20px; font-weight: 600; letter-spacing: -0.01em;
+    margin-bottom: 6px;
+  }
+  .feature p { color: var(--muted); font-size: 15px; line-height: 1.5; }
+
+  .how {
+    background: #fff;
+    border-radius: 24px;
+    padding: 60px 40px;
+  }
+  .how-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px;
+    margin-top: 40px;
+  }
+  @media (max-width: 720px) { .how-grid { grid-template-columns: repeat(2, 1fr); } }
+  .how-step {
+    text-align: center;
+  }
+  .how-step .n {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600; margin: 0 auto 12px;
+  }
+  .how-step h4 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .how-step p { color: var(--muted); font-size: 14px; }
+
+  footer {
+    background: #f5f5f7;
+    padding: 40px 22px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    border-top: 1px solid var(--border);
+  }
+  footer a { color: var(--muted); margin: 0 12px; }
+  footer a:hover { color: var(--text); }
 </style>
 </head>
 <body>
-  <h1>WebScrollMap</h1>
-  <div class="tag">긴 웹페이지를 지도처럼 탐색하는 Safari 확장</div>
-  <nav style="margin-top: 20px;">
-    <a href="privacy.html">개인정보 처리방침</a>
-    <a href="support.html">지원</a>
+  <nav class="nav">
+    <div class="nav-inner">
+      <div class="nav-logo">WebScrollMap</div>
+      <div class="nav-links">
+        <a href="#features">기능</a>
+        <a href="#how">사용법</a>
+        <a href="support.html">지원</a>
+      </div>
+    </div>
   </nav>
-  <div class="card">
-    <h2 style="margin-top:0;">소개</h2>
-    <p>WebScrollMap은 긴 웹페이지의 전체 구조를 화면 오른쪽 미니맵 바로 한눈에 보여줍니다. 꾹 눌러 북마크를 찍고, 더블탭으로 검색하세요.</p>
-    <p><strong>플랫폼:</strong> iOS / iPadOS / macOS Safari</p>
-  </div>
+
+  <section class="hero">
+    <div class="hero-icon"></div>
+    <h1>WebScrollMap</h1>
+    <div class="tagline">긴 웹페이지를 지도처럼 탐색</div>
+    <a class="badge-store" href="#" aria-label="Download on the App Store">
+      <span></span>
+      <span>App Store에서 다운로드</span>
+      <span class="arrow">→</span>
+    </a>
+  </section>
+
+  <section id="features" class="container">
+    <div class="section-tag">Features</div>
+    <h2>긴 페이지의 끝까지, 한눈에.</h2>
+    <div class="section-sub">Safari 우측에 떠있는 미니맵 바로 문서 전체 구조를 파악하고 원하는 위치로 즉시 이동합니다.</div>
+    <div class="features">
+      <div class="feature">
+        <div class="ico">🗺️</div>
+        <h3>미니맵 바</h3>
+        <p>페이지의 헤딩, 이미지, 링크 등 구조가 우측 바에 시각화됩니다. 분홍색 인디케이터가 현재 위치를 보여줍니다.</p>
+      </div>
+      <div class="feature">
+        <div class="ico">📌</div>
+        <h3>원터치 북마크</h3>
+        <p>바를 꾹 누르면 그 위치에 핀이 찍힙니다. 읽다가 잠깐 다른 곳을 확인하고 돌아올 때 편리해요.</p>
+      </div>
+      <div class="feature">
+        <div class="ico">🔍</div>
+        <h3>즉시 검색</h3>
+        <p>바를 더블탭하면 검색창이 열립니다. 페이지 내 모든 헤딩과 텍스트를 인덱싱해 빠르게 찾아가요.</p>
+      </div>
+      <div class="feature">
+        <div class="ico">🎨</div>
+        <h3>5가지 테마</h3>
+        <p>Default, Sunset, Ocean, Forest, Mono — 취향과 페이지 배경에 맞춰 미니맵 색상을 고르세요.</p>
+      </div>
+      <div class="feature">
+        <div class="ico">🔒</div>
+        <h3>프라이버시 우선</h3>
+        <p>수집·전송 없음. 설정과 핀은 기기 로컬에만 저장됩니다. 광고 SDK, 분석 도구 일절 없음.</p>
+      </div>
+      <div class="feature">
+        <div class="ico">⚡</div>
+        <h3>경량</h3>
+        <p>전체 번들 55KB 미만. 페이지 로드 영향 최소. requestAnimationFrame 기반 60fps 스크럽.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="how">
+    <div class="container">
+      <div class="how">
+        <div class="section-tag">How to use</div>
+        <h2 style="margin-bottom:8px;">4단계면 끝</h2>
+        <div class="how-grid">
+          <div class="how-step"><div class="n">1</div><h4>다운로드</h4><p>App Store에서 WebScrollMap 설치</p></div>
+          <div class="how-step"><div class="n">2</div><h4>활성화</h4><p>설정 → Safari → 확장 프로그램에서 켜기</p></div>
+          <div class="how-step"><div class="n">3</div><h4>탐색</h4><p>긴 페이지 열면 우측에 미니맵 바 등장</p></div>
+          <div class="how-step"><div class="n">4</div><h4>북마크</h4><p>꾹 눌러 핀 찍고, 탭해서 복귀</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div>
+      <a href="privacy.html">개인정보 처리방침</a>
+      <a href="support.html">지원</a>
+      <a href="mailto:imurmkj@naver.com">문의</a>
+    </div>
+    <div style="margin-top: 16px;">© 2026 WebScrollMap · v1.0.0</div>
+  </footer>
 </body>
 </html>
